@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# virtual environment
+.venv/
+venv/
+
+# IDE
+.idea/
+
+# secrets
+.env
+.env.*
+
+# Node
+node_modules/
+
+# UniApp
+unpackage/
