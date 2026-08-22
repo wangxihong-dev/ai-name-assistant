@@ -1,4 +1,6 @@
-from pydantic import BaseModel,Field
+from datetime import datetime
+
+from pydantic import BaseModel,Field,ConfigDict
 from typing import List,Annotated,Literal
 from schemas.agent import NameSchema
 
@@ -13,3 +15,24 @@ class NameIn(BaseModel):
 
 class NameOut(BaseModel):
     names:List[NameSchema]
+    message:str|None
+
+
+
+
+
+class SaveNameHistory(BaseModel):
+    id:int
+    surname:str
+    gender:str
+    length:str
+    other:str|None
+    result:dict
+    created_at:datetime
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
+
+class NameResponseOut(BaseModel):
+    histories:List[SaveNameHistory]

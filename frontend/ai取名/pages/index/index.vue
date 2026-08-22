@@ -102,9 +102,7 @@
 	</view>
 
 
-
 </view>
-
 
 </template>
 
@@ -151,7 +149,6 @@ const login=()=>{
 
 
 
-
 	uni.request({
 
 
@@ -164,65 +161,49 @@ const login=()=>{
 		data:form.value,
 
 
-
 		success(res){
 
+			console.log("登录返回状态码:",res.statusCode)
+			console.log("登录返回数据:",res.data)
 
-			console.log(res.data)
+			// 检查HTTP状态码和token
+			if(res.statusCode===200 && res.data && res.data.tokens){
+				// 登录成功，保存token
+				uni.setStorageSync("token",res.data.tokens)
+				console.log("token已保存:",res.data.tokens.substring(0,20)+"...")
 
-
-
-			//保存token
-
-			uni.setStorageSync(
-				"token",
-				res.data.tokens
-			)
-
-
-
-			uni.showToast({
-
-				title:"登录成功"
-
-			})
-
-
-
-			setTimeout(()=>{
-
-
-				uni.reLaunch({
-
-					url:"/pages/name/name"
-
+				uni.showToast({
+					title:"登录成功"
 				})
 
-
-			},1000)
-
-
+				setTimeout(()=>{
+					uni.reLaunch({
+						url:"/pages/name/name"
+					})
+				},1000)
+			}else{
+				// 登录失败
+				const msg=res.data?.detail || "登录失败，请检查邮箱和密码"
+				uni.showToast({
+					title:msg,
+					icon:"none"
+				})
+			}
 
 		},
 
 
-		fail(){
+		fail(err){
 
-
+			console.log("登录请求失败:",err)
 			uni.showToast({
-
-				title:"登录失败",
-
+				title:"网络错误，请检查后端是否启动",
 				icon:"none"
-
 			})
-
 
 		}
 
-
 	})
-
 
 }
 
@@ -273,6 +254,7 @@ const goRegister=()=>{
 
 
 
+
 .logo{
 
 	display:block;
@@ -287,6 +269,7 @@ const goRegister=()=>{
 
 
 
+
 .desc{
 
 	display:block;
@@ -298,6 +281,7 @@ const goRegister=()=>{
 	margin-top:20rpx;
 
 }
+
 
 
 
@@ -335,11 +319,13 @@ const goRegister=()=>{
 
 
 
+
 .item{
 
 	margin-bottom:40rpx;
 
 }
+
 
 
 
@@ -354,6 +340,7 @@ const goRegister=()=>{
 	font-size:30rpx;
 
 }
+
 
 
 
@@ -389,6 +376,7 @@ input{
 
 
 
+
 .register{
 
 
@@ -402,6 +390,7 @@ input{
 
 
 
+
 .register text{
 
 
@@ -409,7 +398,6 @@ input{
 
 
 }
-
 
 
 </style>

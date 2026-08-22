@@ -7,10 +7,14 @@
 
 	<view class="header">
 
-		<text class="logo">
-			✨ 鸿运取名
-		</text>
-
+		<view class="header-top">
+			<text class="logo">
+				✨ 鸿运取名
+			</text>
+			<view class="history-btn" @click="goHistory">
+				<text>📜 历史</text>
+			</view>
+		</view>
 
 		<text class="subtitle">
 			AI国学智能命名助手
@@ -194,6 +198,10 @@
 		class="result"
 	>
 
+		<!-- 保存成功提示 -->
+		<view v-if="showSaveTip" class="save-tip">
+			<text>✨ 已为你保存这次取名记录，可在历史中查看</text>
+		</view>
 
 		<text class="result-title">
 
@@ -267,9 +275,7 @@
 	</view>
 
 
-
 </view>
-
 
 </template>
 
@@ -308,6 +314,8 @@ const loading=ref(false)
 
 
 const result=ref(null)
+
+const showSaveTip=ref(false)
 
 
 
@@ -348,16 +356,29 @@ const generate=()=>{
 
 
 
+	// 从本地存储取token
+	const token = uni.getStorageSync("token")
 
-	const token=
-	uni.getStorageSync("token")
+	console.log("当前token:", token ? token.substring(0, 20) + "..." : "空或undefined")
 
+	// 检查是否登录
+	if(!token){
+		uni.showToast({
+			title:"请先登录",
+			icon:"none"
+		})
+		setTimeout(()=>{
+			uni.reLaunch({
+				url:"/pages/index/index"
+			})
+		},1000)
+		return
+	}
 
 
 	loading.value=true
 
 	result.value=null
-
 
 
 	uni.request({
@@ -375,39 +396,56 @@ const generate=()=>{
 		header:{
 
 
-			Authorization:
-			"Bearer "+token
+			Authorization:"Bearer "+token
 
 
 		},
-
 
 
 		success(res){
 
+			console.log("取名返回状态码:",res.statusCode)
+			console.log("取名返回数据:",res.data)
 
-			console.log(res.data)
-
-
-			result.value=res.data
-
+			if(res.statusCode===200){
+				result.value=res.data
+				// 显示保存成功提示，3秒后消失
+				showSaveTip.value=true
+				setTimeout(()=>{
+					showSaveTip.value=false
+				},3000)
+			}else if(res.statusCode===401 || res.statusCode===403){
+				// token无效或过期，清除并跳转登录
+				uni.removeStorageSync("token")
+				uni.showToast({
+					title:"登录已过期，请重新登录",
+					icon:"none"
+				})
+				setTimeout(()=>{
+					uni.reLaunch({
+						url:"/pages/index/index"
+					})
+				},1000)
+			}else{
+				const msg=res.data?.detail || "生成失败"
+				uni.showToast({
+					title:msg,
+					icon:"none"
+				})
+			}
 
 		},
 
 
+		fail(err){
 
-		fail(){
-
+			console.log("取名请求失败:",err)
 			uni.showToast({
-
-				title:"生成失败",
-
+				title:"网络错误，请检查后端是否启动",
 				icon:"none"
-
 			})
 
 		},
-
 
 
 		complete(){
@@ -421,6 +459,14 @@ const generate=()=>{
 
 
 
+}
+
+
+// 跳转到历史记录页面
+const goHistory=()=>{
+	uni.navigateTo({
+		url:"/pages/history/history"
+	})
 }
 
 
@@ -448,6 +494,7 @@ const generate=()=>{
 
 
 
+
 .header{
 
 
@@ -456,6 +503,31 @@ const generate=()=>{
 	margin-bottom:50rpx;
 
 
+}
+
+.header-top{
+	display:flex;
+	justify-content:space-between;
+	align-items:center;
+}
+
+.history-btn{
+	background:#fffaf3;
+	padding:12rpx 25rpx;
+	border-radius:30rpx;
+	font-size:26rpx;
+	color:#946638;
+}
+
+.save-tip{
+	background:#fff3e0;
+	border:2rpx solid #ffcc80;
+	border-radius:20rpx;
+	padding:20rpx 25rpx;
+	margin-bottom:25rpx;
+	text-align:center;
+	font-size:26rpx;
+	color:#e65100;
 }
 
 
@@ -476,6 +548,7 @@ const generate=()=>{
 
 
 
+
 .subtitle{
 
 
@@ -489,6 +562,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -509,6 +583,7 @@ const generate=()=>{
 
 
 
+
 .card{
 
 
@@ -520,6 +595,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -537,6 +613,7 @@ const generate=()=>{
 
 
 
+
 .input{
 
 
@@ -551,6 +628,7 @@ const generate=()=>{
 
 
 
+
 .select-box{
 
 
@@ -560,6 +638,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -577,6 +656,7 @@ const generate=()=>{
 
 
 
+
 .active{
 
 
@@ -586,6 +666,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -605,6 +686,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -655,6 +737,7 @@ const generate=()=>{
 
 
 
+
 .loading-title{
 
 
@@ -671,6 +754,7 @@ const generate=()=>{
 
 
 
+
 .loading-desc{
 
 
@@ -682,6 +766,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -706,6 +791,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -745,6 +831,7 @@ const generate=()=>{
 
 
 
+
 .line{
 
 
@@ -756,6 +843,7 @@ const generate=()=>{
 
 
 }
+
 
 
 
@@ -777,6 +865,7 @@ const generate=()=>{
 
 
 
+
 .content{
 
 
@@ -790,6 +879,7 @@ const generate=()=>{
 
 
 }
+
 
 
 

@@ -36,7 +36,3 @@ JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
 
 api_key = os.getenv("api_key")
-print("数据库:", DB_URL)
-print("邮箱:", MAIL_USERNAME)
-print("JWT:", JWT_SECRET_KEY)
-print("AI KEY:", api_key[:10])

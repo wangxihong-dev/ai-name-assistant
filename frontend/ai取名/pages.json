@@ -19,6 +19,12 @@
 			"style": {
 				"navigationBarTitleText": ""
 			}
+		},
+		{
+			"path": "pages/history/history",
+			"style": {
+				"navigationBarTitleText": "取名历史"
+			}
 		}
 	],
 	"globalStyle": {

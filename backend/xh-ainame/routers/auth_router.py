@@ -59,7 +59,7 @@ async def register(
 
     #2.校验验证码是否正确
     email_code_repo = EmailCodeRepository(session=session)
-    email_code_match=email_code_repo.check(email=data.email,code=data.code)
+    email_code_match=await email_code_repo.check(email=data.email,code=data.code)
 
     if not email_code_match:
         raise HTTPException(400,detail="邮箱或者验证码错误")

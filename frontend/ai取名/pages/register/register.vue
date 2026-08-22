@@ -40,11 +40,11 @@
 			<button
 				class="code-btn"
 				@click="sendCode"
-				:disabled="countDown>0"
+				:disabled="countDown>0 || sending"
 			>
 
-			{{countDown>0?
-			countDown+'秒后重新获取':
+			{{sending?'发送中...':countDown>0?
+			countDown+'秒后重发':
 			'获取验证码'}}
 
 
@@ -122,68 +122,99 @@ const form=ref({
 
 
 const countDown=ref(0)
+const sending=ref(false)
+let timer=null
 
-
+// 邮箱格式校验
+const isValidEmail=(email)=>{
+	const reg=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+	return reg.test(email)
+}
 
 // 获取验证码
-
 const sendCode=()=>{
 
-
+	// 1. 校验邮箱
 	if(!form.value.email){
-
 		uni.showToast({
 			title:"请先输入邮箱",
 			icon:"none"
 		})
-
 		return
-
 	}
 
+	if(!isValidEmail(form.value.email)){
+		uni.showToast({
+			title:"邮箱格式不正确",
+			icon:"none"
+		})
+		return
+	}
 
+	// 2. 防止重复点击
+	if(sending.value || countDown.value>0){
+		return
+	}
 
+	sending.value=true
+
+	// 3. 发送请求
 	uni.request({
 
 		url:"http://127.0.0.1:8000/auth/code",
-
 		method:"GET",
-
 		data:{
 			email:form.value.email
 		},
 
+		success(res){
+			// 请求成功（HTTP 200）
+			if(res.statusCode===200){
+				uni.showToast({
+					title:"验证码已发送，请注意查收",
+					icon:"none"
+				})
+				// 开始倒计时
+				startCountDown()
+			}else{
+				// 后端返回错误
+				const msg=res.data?.detail || "发送失败，请重试"
+				uni.showToast({
+					title:msg,
+					icon:"none"
+				})
+			}
+		},
 
-		success(){
-
+		fail(err){
+			// 请求失败（网络错误、后端没启动等）
+			console.log("验证码发送失败:",err)
 			uni.showToast({
-				title:"验证码已发送"
+				title:"网络错误，请检查后端是否启动",
+				icon:"none"
 			})
+		},
 
-
-			countDown.value=60
-
-
-			let timer=setInterval(()=>{
-
-
-				countDown.value--
-
-
-				if(countDown.value<=0){
-
-					clearInterval(timer)
-
-				}
-
-
-			},1000)
-
+		complete(){
+			sending.value=false
 		}
 
-
 	})
+}
 
+// 倒计时
+const startCountDown=()=>{
+	countDown.value=60
+	if(timer){
+		clearInterval(timer)
+	}
+	timer=setInterval(()=>{
+		countDown.value--
+		if(countDown.value<=0){
+			clearInterval(timer)
+			timer=null
+		}
+	},1000)
 }
 
 
@@ -191,29 +222,51 @@ const sendCode=()=>{
 
 const register=()=>{
 
+	// 简单校验
+	if(!form.value.email || !form.value.code || !form.value.username || !form.value.password){
+		uni.showToast({
+			title:"请填写完整信息",
+			icon:"none"
+		})
+		return
+	}
+
+	if(form.value.password !== form.value.confirm_password){
+		uni.showToast({
+			title:"两次密码不一致",
+			icon:"none"
+		})
+		return
+	}
 
 	uni.request({
 
 		url:"http://127.0.0.1:8000/auth/register",
-
 		method:"POST",
-
 		data:form.value,
 
+		success(res){
+			if(res.statusCode===200){
+				uni.showToast({
+					title:"注册成功，请登录"
+				})
+				setTimeout(()=>{
+					uni.navigateBack()
+				},1000)
+			}else{
+				const msg=res.data?.detail || "注册失败，请重试"
+				uni.showToast({
+					title:msg,
+					icon:"none"
+				})
+			}
+		},
 
-		success(){
-
+		fail(){
 			uni.showToast({
-				title:"注册成功"
+				title:"网络错误，请检查后端是否启动",
+				icon:"none"
 			})
-
-
-			setTimeout(()=>{
-
-				uni.navigateBack()
-
-			},1000)
-
 		}
 
 	})
