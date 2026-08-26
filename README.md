@@ -39,6 +39,7 @@
 - DeepSeek API
 - LangChain
 - Agent（结构化输出）
+- 诗词知识库（宋诗 + 宋词，繁体转简体）
 
 
 ## ✨ 当前功能
@@ -73,8 +74,9 @@
 ### 后续计划
 
 - [ ] 增加名字收藏功能
-- [ ] 接入诗词知识库（RAG）
+- [ ] 诗词向量化与 RAG 检索（进行中）
 - [ ] Agent 调用知识库检索
+- [ ] 取名结果展示诗词出处
 - [ ] 项目部署上线
 
 
@@ -101,10 +103,12 @@ ai-name-assistant
 │   └── xh-ainame
 │       ├── alembic/          # 数据库迁移
 │       ├── core/             # 核心模块（认证、邮件、AI Agent）
+│       ├── data/             # 原始数据（诗词 JSON）
 │       ├── models/           # 数据库模型
 │       ├── repository/       # 数据访问层
 │       ├── routers/          # 路由层
 │       ├── schemas/          # Pydantic 数据模型
+│       ├── script/           # 工具脚本（数据导入等）
 │       ├── service/          # 业务逻辑层
 │       ├── settings/         # 配置
 │       ├── main.py           # 应用入口
@@ -142,7 +146,13 @@ pip install -r requirements.txt
 alembic upgrade head
 ```
 
-5. 启动服务：
+5. 导入诗词数据（可选，RAG 功能需要）：
+```bash
+python script/import_poetry.py
+```
+脚本会自动将 `data/poetry/` 目录下的宋诗和宋词 JSON 文件导入数据库，支持繁体转简体、重复跳过。
+
+6. 启动服务：
 ```bash
 uvicorn main:app --reload
 ```
@@ -169,6 +179,16 @@ API 文档：http://127.0.0.1:8000/docs
 - 取名接口 `POST /name/` 增加自动保存历史逻辑
 - 前端新增历史记录页面，支持列表展示和展开详情
 - 前端取名页增加历史记录入口和保存成功提示
+
+### 2026-08-26 新增诗词数据导入功能
+
+- 新增 `Poetry` 模型，存储诗词原文（宋诗 + 宋词）
+- Alembic 迁移创建 `poetry` 表
+- 新增 `PoetryRepository` 数据访问层
+- 新增 `script/import_poetry.py` 数据导入脚本
+- 支持繁体转简体、批量导入、重复数据自动跳过
+- 包含 1000 首宋诗和 11000 首宋词原始数据
+- 为后续 RAG 检索增强生成功能做数据准备
 
 
 ## 👨‍💻 作者

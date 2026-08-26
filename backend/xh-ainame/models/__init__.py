@@ -51,3 +51,4 @@ class Base(DeclarativeBase):
 
 from . import user
 from . import name_history
+from . import poetry
