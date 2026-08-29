@@ -19,3 +19,7 @@ node_modules/
 
 # UniApp
 unpackage/
+
+# Milvus
+docker/milvus/volumes/
+milvus_data/

@@ -17,5 +17,9 @@ class PoetryRepo:
 
 
     async def batch_insert(self,poetry:List[Poetry]) -> None :
-
         self.session.add_all(poetry)
+
+    async def get_all(self) -> List[Poetry]:
+        stmt=select(Poetry)
+        result=await self.session.scalars(stmt)
+        return result.all()

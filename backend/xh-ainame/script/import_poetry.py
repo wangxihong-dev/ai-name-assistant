@@ -12,7 +12,7 @@ def read_json(filename: str) -> List[dict]:
     with open(filename, 'r',encoding="utf-8") as f:
         return json.load(f)
 
-
+#唐诗
 def process_item(item: dict,source:str,dynasty:str) ->dict:
 
     poetry = {
@@ -25,6 +25,7 @@ def process_item(item: dict,source:str,dynasty:str) ->dict:
     }
     return poetry
 
+#宋词
 def process_item_song(item: dict,source:str,dynasty:str) ->dict:
     content = convert("\n".join(item["paragraphs"]),"zh-cn")
     poetry = {
@@ -34,6 +35,19 @@ def process_item_song(item: dict,source:str,dynasty:str) ->dict:
         "content":content,
         "author":convert(item['author'],"zh-cn"),
         "title":convert(item['rhythmic'],"zh-cn")
+    }
+    return poetry
+
+#诗经
+def process_item_shijing(item: dict,source:str,dynasty:str) ->dict:
+    content = convert("\n".join(item["content"]),"zh-cn")
+    poetry = {
+        "source_id":hashlib.md5(content.encode()).hexdigest(),
+        "source":source,
+        "dynasty":dynasty,
+        "content":content,
+        "author":"佚名",
+        "title":convert(item['title'],"zh-cn")
     }
     return poetry
 
@@ -49,16 +63,19 @@ async def main():
     batch_list = []
 
     async with AsyncSessionFactory() as session:
-        raw_data = read_json('D:/Project/ai-name-assistant/backend/xh-ainame/data/poetry/ci.song.11000.json')
+        raw_data = read_json(r"C:\Users\hong\Downloads\ci.song.12000.json")
         poetry_repo=PoetryRepo(session)
 
         for i, item in enumerate(raw_data):
             try:
-                #导入唐诗
+                #导入唐诗(source="全唐诗",dynasty="唐")
                 #poetry_dict=process_item(item,source="全唐诗",dynasty="唐")
 
-                #导入宋词
+                #导入宋词(source="宋词",dynasty="宋")
                 poetry_dict=process_item_song(item,source="宋词",dynasty="宋")
+
+                #导入诗经(source="诗经",dynasty="春秋中期")
+                # poetry_dict=process_item_shijing(item,source="诗经",dynasty="春秋中期")
 
                 result=await poetry_repo.poetry_is_exist(source=poetry_dict.get("source"),source_id=poetry_dict.get("source_id"))
 
@@ -88,6 +105,7 @@ async def main():
             success+=len(batch_list)
             batch_list.clear()
 
+    await session.close()
     await engine.dispose()
 
 
