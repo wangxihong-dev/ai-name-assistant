@@ -39,7 +39,10 @@
 - DeepSeek API
 - LangChain
 - Agent（结构化输出）
-- 诗词知识库（宋诗 + 宋词，繁体转简体）
+- Sentence Transformers（BAAI/bge-base-zh-v1.5 中文向量模型，768 维）
+- Milvus 向量数据库（Docker 部署，etcd + MinIO）
+- RAG 检索增强生成
+- 诗词知识库（唐诗 + 宋词 + 诗经，繁体转简体）
 
 
 ## ✨ 当前功能
@@ -71,10 +74,17 @@
 - [x] 按时间倒序排列
 
 
+### 诗词 RAG 知识库
+
+- [x] Milvus 向量数据库连接与 Collection 创建（`poetry_vectors`）
+- [x] 诗词向量化导入（MySQL → 按行切 chunk → BGE 768 维向量 → Milvus）
+- [x] 向量语义检索（按诗句语义召回相关诗词，并返回标题、作者、出处）
+
+
 ### 后续计划
 
 - [ ] 增加名字收藏功能
-- [ ] 诗词向量化与 RAG 检索（进行中）
+- [ ] RAG 检索接进取名流程（Milvus 检索 → 构造 Prompt → LLM 生成）
 - [ ] Agent 调用知识库检索
 - [ ] 取名结果展示诗词出处
 - [ ] 项目部署上线
@@ -101,22 +111,33 @@
 ai-name-assistant
 ├── backend
 │   └── xh-ainame
-│       ├── alembic/          # 数据库迁移
-│       ├── core/             # 核心模块（认证、邮件、AI Agent）
-│       ├── data/             # 原始数据（诗词 JSON）
-│       ├── models/           # 数据库模型
-│       ├── repository/       # 数据访问层
-│       ├── routers/          # 路由层
-│       ├── schemas/          # Pydantic 数据模型
-│       ├── script/           # 工具脚本（数据导入等）
-│       ├── service/          # 业务逻辑层
-│       ├── settings/         # 配置
-│       ├── main.py           # 应用入口
-│       └── requirements.txt  # 依赖
+│       ├── alembic/                      # 数据库迁移
+│       ├── core/                         # 核心模块（认证、邮件、AI Agent）
+│       │   └── milvus.py                 # Milvus 连接客户端
+│       ├── data/poetry/                  # 原始诗词数据（JSON）
+│       ├── models/                       # 数据库模型
+│       ├── repository/                   # 数据访问层
+│       │   ├── poetry_reposityory.py     # MySQL 诗词访问
+│       │   └── milvus_repository.py      # Milvus 访问（建表/插入/搜索）
+│       ├── routers/                      # 路由层
+│       ├── schemas/                      # Pydantic 数据模型
+│       ├── script/                       # 工具脚本
+│       │   ├── import_poetry.py          # JSON → MySQL 诗词导入
+│       │   ├── import_vector.py          # MySQL → chunk → 向量 → Milvus
+│       │   └── test_milvus.py            # Milvus 建表/插入/搜索验证
+│       ├── service/                      # 业务逻辑层
+│       │   └── embedding_service.py      # BGE 文本向量化
+│       ├── settings/                     # 配置
+│       ├── main.py                       # 应用入口
+│       └── requirements.txt              # 依赖
+├── docker
+│   └── milvus/
+│       ├── docker-compose.yml            # Milvus Standalone（etcd + minio）
+│       └── volumes/                      # Milvus 数据目录（git 忽略）
 ├── frontend
-│   └── ai取名                # UniApp 前端
+│   └── ai取名                            # UniApp 前端
 ├── docs
-│   └── screenshots/          # 项目截图
+│   └── screenshots/                      # 项目截图
 └── README.md
 ```
 
@@ -150,9 +171,24 @@ alembic upgrade head
 ```bash
 python script/import_poetry.py
 ```
-脚本会自动将 `data/poetry/` 目录下的宋诗和宋词 JSON 文件导入数据库，支持繁体转简体、重复跳过。
+脚本会自动将 `data/poetry/` 目录下的诗词 JSON 文件导入数据库，支持繁体转简体、重复跳过。
 
-6. 启动服务：
+6. 启动 Milvus 向量数据库（RAG 功能需要）：
+```bash
+cd docker/milvus
+docker compose up -d
+```
+首次启动会拉取镜像（etcd、MinIO、Milvus Standalone），等待健康检查通过后即可连接 `localhost:19530`。
+
+7. 导入诗词向量（将 MySQL 中的诗词切分并向量化写入 Milvus）：
+```bash
+cd backend/xh-ainame
+python -m script.import_vector
+```
+脚本按行切分诗词为 chunk，用 BGE 模型生成 768 维向量，写入 `poetry_vectors` Collection。
+模型已下载到本地缓存时可离线运行（设置环境变量 `HF_HUB_OFFLINE=1`）。
+
+8. 启动服务：
 ```bash
 uvicorn main:app --reload
 ```
@@ -189,6 +225,16 @@ API 文档：http://127.0.0.1:8000/docs
 - 支持繁体转简体、批量导入、重复数据自动跳过
 - 包含 1000 首宋诗和 11000 首宋词原始数据
 - 为后续 RAG 检索增强生成功能做数据准备
+
+### 2026-08-29 新增 Milvus RAG 知识库
+
+- 新增 `core/milvus.py`：Milvus 连接客户端
+- 新增 `repository/milvus_repository.py`：Milvus 数据访问层（建表 / 批量插入 / 向量搜索）
+- 新增 `service/embedding_service.py`：BGE 中文向量模型封装（768 维，余弦归一化）
+- 新增 `script/import_vector.py`：MySQL → chunk → 向量 → Milvus 导入脚本
+- 新增 `script/test_milvus.py`：Milvus 建表 / 插入 / 搜索验证脚本
+- 新增 `docker/milvus/docker-compose.yml`：Milvus Standalone（etcd + MinIO）Docker 编排
+- 完成诗词语义检索验证（示例：搜索「明月」可召回相关诗句并返回出处）
 
 
 ## 👨‍💻 作者
