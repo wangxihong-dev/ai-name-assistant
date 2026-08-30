@@ -3,7 +3,9 @@ from settings import api_key
 from langchain.agents import create_agent
 from schemas.agent import NameResultSchema
 from schemas.name import NameIn
-import asyncio
+from repository.milvus_repository import MilvusRepo
+from core.milvus import milvus_client
+from service.embedding_service import EmbeddingService
 
 llm = ChatDeepSeek(
     model="deepseek-chat",
@@ -13,7 +15,7 @@ llm = ChatDeepSeek(
 
 system_prompt = """
 你是一位精通汉语言文学、音韵学与传统文化的命名专家，擅长为人物创作兼具音律美感、深刻寓意与文化内涵的姓名。请严格遵循以下原则进行命名：
-
+每个名字的【出处】必须引用上面提供的诗句原文，不得使用列表之外的内容。
 发音优先：名字需平仄协调、声调起伏自然，避免拗口、谐音歧义（如不雅谐音、负面联想），朗朗上口，富有韵律感；
 寓意深远：结合用户提供的背景（如姓氏、性别、字数和其他要求等），选取具有积极象征意义的意象（如自然元素、美德品质、经典典故），做到“名以载道”；
 内涵厚重：优先从《诗经》《楚辞》《论语》等经典文献，或唐诗宋词、成语典故中汲取灵感，确保名字有出处、有底蕴，避免空洞堆砌；
@@ -31,7 +33,25 @@ agent = create_agent(
 )
 
 async def generate_name(name_info:NameIn) ->NameResultSchema:
-    prompt = (f"用户的姓氏{name_info.surname},用户的性别：{name_info.gender},字数的要求：{name_info.length},"
+
+    client=milvus_client()
+    embed_service=EmbeddingService()
+    milvis_repo=MilvusRepo(client)
+
+    user_vector=embed_service.embed_text(name_info.other or "美好寓意，吉祥如意")
+    milvus_result=milvis_repo.search(collection_name="poetry_vectors",data=[user_vector],limit=5)
+
+    poems=[]
+
+    for i ,hit in enumerate(milvus_result[0],1):
+        poetry_text=hit["entity"]["text"]
+        metadata=hit["entity"]["metadata"]
+        poems.append(f"{i}:《{metadata['title']}》 {metadata['author']} ({metadata['dynasty']}) : {poetry_text}")
+
+    retrieved_text="\n".join(poems)
+
+    prompt = (f"以下是从诗词库检索到的相关诗句，（必须从中挑选出处，禁止编造未提供的出处）：{retrieved_text}"
+                f"用户的姓氏{name_info.surname},用户的性别：{name_info.gender},字数的要求：{name_info.length},"
               f"用户的其他要求：{name_info.other},用户不想要的名字{','.join(name_info.exclude)}")
 
     result = await agent.ainvoke({

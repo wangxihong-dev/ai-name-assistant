@@ -5,11 +5,13 @@ from pwdlib import PasswordHash
 from typing import List
 from datetime import datetime
 
+
 password_hash = PasswordHash.recommended()
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from models.name_history import NameHistory
+    from models.name_favorite import NameFavorite
 
 class User(Base):
     __tablename__ = 'user'
@@ -18,6 +20,7 @@ class User(Base):
     username:Mapped[str]= mapped_column(String(100))
     _password:Mapped[str]=mapped_column(String(200))
     name_histories:Mapped[list["NameHistory"]]=relationship("NameHistory",back_populates="user")
+    name_favorites:Mapped[List["NameFavorite"]]=relationship("NameFavorite",back_populates="user")
 
     def __init__(self,*args,**kwargs):
         password = kwargs.pop('password')

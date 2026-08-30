@@ -10,7 +10,7 @@ class EmbeddingService:
     def __init__(self):
         if self._model is None:
             print("运行中请等侯。。。")
-            EmbeddingService._model=SentenceTransformer("BAAI/bge-base-zh-v1.5")
+            EmbeddingService._model=SentenceTransformer("BAAI/bge-base-zh-v1.5",local_files_only=True)
             print("模型加载成功")
 
 

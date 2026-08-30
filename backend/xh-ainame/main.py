@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi_mail import FastMail,MessageSchema,MessageType
 from dependencies import get_mail
 from routers.auth_router import router as auth_router
@@ -6,6 +7,15 @@ from routers.name_router import router as name_router
 
 
 app = FastAPI()
+
+# H5 前端与后端跨端口调用所需：开发期放开跨域，部署时再按需收紧
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router)
 
