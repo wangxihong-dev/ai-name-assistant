@@ -7,10 +7,11 @@
 ## 📌 项目介绍
 
 本项目面向家长用户，通过输入宝宝姓氏、性别、名字长度、
-个性化要求等信息，利用 AI 大模型生成多个候选名字。
+个性化要求等信息，利用 RAG 检索诗词知识库，结合 AI 大模型
+生成多个候选名字，并给出诗词出处与寓意解释。
 
-用户可以注册账号、登录系统，并获取个性化取名服务。
-所有取名记录会自动保存，方便用户随时回顾和对比。
+用户可以注册账号、登录系统，获取个性化取名服务，
+收藏心仪的名字，所有取名记录自动保存，方便随时回顾对比。
 
 
 ## 🛠 技术栈
@@ -62,6 +63,7 @@
 - [x] 根据性别生成名字
 - [x] 根据名字长度生成名字
 - [x] 根据父母寄语生成名字
+- [x] 检索诗词知识库，基于真实诗句生成名字出处
 - [x] AI 返回名字、出处、寓意
 - [x] 结构化输出（Pydantic Schema 约束）
 
@@ -69,25 +71,30 @@
 ### 历史记录
 
 - [x] 取名后自动保存历史记录
-- [x] 查看个人历史取名记录列表
+- [x] 查看个人取名历史记录列表
 - [x] 点击展开查看当时生成的名字详情
 - [x] 按时间倒序排列
+
+
+### 名字收藏
+
+- [x] 一键收藏喜欢的名字（出处、寓意一并保存）
+- [x] 查看我的收藏列表
+- [x] 取消收藏
 
 
 ### 诗词 RAG 知识库
 
 - [x] Milvus 向量数据库连接与 Collection 创建（`poetry_vectors`）
-- [x] 诗词向量化导入（MySQL → 按行切 chunk → BGE 768 维向量 → Milvus）
+- [x] 诗词向量化导入（MySQL → 按行切 chunk → BGE 768 维向量 → Milvus，共 5.7 万+ chunk）
 - [x] 向量语义检索（按诗句语义召回相关诗词，并返回标题、作者、出处）
+- [x] RAG 接进取名流程（用户需求 → 向量检索 → 构造 Prompt → LLM 生成带出处名字）
 
 
 ### 后续计划
 
-- [ ] 增加名字收藏功能
-- [ ] RAG 检索接进取名流程（Milvus 检索 → 构造 Prompt → LLM 生成）
-- [ ] Agent 调用知识库检索
-- [ ] 取名结果展示诗词出处
-- [ ] 项目部署上线
+- [ ] 项目部署上线（前端、后端、MySQL、Milvus 全链路容器化）
+- [ ] 收藏去重 / 已收藏状态标记（可选优化）
 
 
 ## 📷 项目截图
@@ -96,13 +103,9 @@
 |--------|--------|
 | ![登录页](docs/screenshots/login.png) | ![注册页](docs/screenshots/register.png) |
 
-| 取名页 | 取名结果 |
+| 取名页 | 我的收藏 |
 |--------|----------|
-| ![取名页](docs/screenshots/name-input.png) | ![取名结果](docs/screenshots/name-result.png) |
-
-| 历史记录列表 | 历史记录详情 |
-|-------------|-------------|
-| ![历史记录](docs/screenshots/history-list.png) | ![历史详情](docs/screenshots/history-detail.png) |
+| ![取名页](docs/screenshots/name-input.png) | ![我的收藏](docs/screenshots/favorite.png) |
 
 
 ## 📂 项目结构
@@ -116,9 +119,13 @@ ai-name-assistant
 │       │   └── milvus.py                 # Milvus 连接客户端
 │       ├── data/poetry/                  # 原始诗词数据（JSON）
 │       ├── models/                       # 数据库模型
+│       │   ├── poetry.py                 # 诗词表
+│       │   ├── name_history.py           # 取名历史表
+│       │   └── name_favorite.py          # 名字收藏表
 │       ├── repository/                   # 数据访问层
 │       │   ├── poetry_reposityory.py     # MySQL 诗词访问
-│       │   └── milvus_repository.py      # Milvus 访问（建表/插入/搜索）
+│       │   ├── milvus_repository.py      # Milvus 访问（建表/插入/搜索）
+│       │   └── name_favorite_repository.py # 收藏数据访问
 │       ├── routers/                      # 路由层
 │       ├── schemas/                      # Pydantic 数据模型
 │       ├── script/                       # 工具脚本
@@ -126,9 +133,11 @@ ai-name-assistant
 │       │   ├── import_vector.py          # MySQL → chunk → 向量 → Milvus
 │       │   └── test_milvus.py            # Milvus 建表/插入/搜索验证
 │       ├── service/                      # 业务逻辑层
-│       │   └── embedding_service.py      # BGE 文本向量化
+│       │   ├── embedding_service.py      # BGE 文本向量化
+│       │   ├── name_service.py           # 取名 + 历史记录
+│       │   └── favorite_service.py       # 名字收藏
 │       ├── settings/                     # 配置
-│       ├── main.py                       # 应用入口
+│       ├── main.py                       # 应用入口（含 CORS 配置）
 │       └── requirements.txt              # 依赖
 ├── docker
 │   └── milvus/
@@ -136,6 +145,13 @@ ai-name-assistant
 │       └── volumes/                      # Milvus 数据目录（git 忽略）
 ├── frontend
 │   └── ai取名                            # UniApp 前端
+│       ├── common/api.js                 # 统一请求层（地址/鉴权/错误处理）
+│       └── pages/
+│           ├── index/                    # 登录页
+│           ├── register/                 # 注册页
+│           ├── name/                     # 取名页
+│           ├── history/                  # 历史记录页
+│           └── favorite/                 # 我的收藏页
 ├── docs
 │   └── screenshots/                      # 项目截图
 └── README.md
@@ -199,7 +215,7 @@ API 文档：http://127.0.0.1:8000/docs
 ### 前端启动
 
 1. 使用 HBuilderX 打开 `frontend/ai取名`
-2. 配置后端 API 地址（默认 `http://127.0.0.1:8000`）
+2. 后端 API 地址统一在 `common/api.js` 的 `BASE_URL` 中配置（默认 `http://127.0.0.1:8000`）
 3. 运行到浏览器或模拟器
 
 
@@ -235,6 +251,17 @@ API 文档：http://127.0.0.1:8000/docs
 - 新增 `script/test_milvus.py`：Milvus 建表 / 插入 / 搜索验证脚本
 - 新增 `docker/milvus/docker-compose.yml`：Milvus Standalone（etcd + MinIO）Docker 编排
 - 完成诗词语义检索验证（示例：搜索「明月」可召回相关诗句并返回出处）
+
+### 2026-08-30 RAG 接进取名流程 + 名字收藏功能 + 前端全面改版
+
+- RAG 接进取名：取名时先向量检索诗词，Top-K 诗句拼入 Prompt，LLM 生成带真实出处的名字
+- 新增 `NameFavorite` 模型与 Alembic 迁移，收藏数据入库
+- 新增 `NameFavoriteRepository`、`FavoritesService` 分层实现
+- 新增接口：`POST /name/favorite`、`GET /name/favorites`、`DELETE /name/delete/{id}`
+- 前端新增「我的收藏」页面，取名结果支持一键收藏 / 取消收藏
+- 前端统一设计系统（暖色渐变 + 卡片 + 动效），全面改版登录 / 注册 / 取名 / 历史页面
+- 优化等待体验（分阶段加载动画、骨架屏）与页面性能（统一请求层、防重复提交、入场动画）
+- 后端增加 CORS 配置，支持 H5 前端跨域调用
 
 
 ## 👨‍💻 作者
