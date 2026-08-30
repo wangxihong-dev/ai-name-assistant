@@ -23,3 +23,5 @@ unpackage/
 # Milvus
 docker/milvus/volumes/
 milvus_data/
+# 部署打包临时文件
+deploy-src.tar.gz
