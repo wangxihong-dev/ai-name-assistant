@@ -1,0 +1,5 @@
+# 前端构建上下文排除项
+node_modules/
+unpackage/
+.idea/
+.git/

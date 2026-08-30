@@ -6,6 +6,7 @@ from typing import List
 from repository.poetry_reposityory import PoetryRepo
 from models import AsyncSessionFactory,engine
 import hashlib
+from pathlib import Path
 
 
 def read_json(filename: str) -> List[dict]:
@@ -63,7 +64,8 @@ async def main():
     batch_list = []
 
     async with AsyncSessionFactory() as session:
-        raw_data = read_json(r"C:\Users\hong\Downloads\ci.song.12000.json")
+        poetry_data = Path(__file__).resolve().parent.parent / "data" / "poetry" / "ci.song.11000.json"
+    raw_data = read_json(str(poetry_data))
         poetry_repo=PoetryRepo(session)
 
         for i, item in enumerate(raw_data):
@@ -116,6 +118,7 @@ async def main():
 if __name__ == '__main__':
 
     asyncio.run(main())
+
 
 
 
