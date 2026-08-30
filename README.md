@@ -254,7 +254,7 @@ API 文档：http://127.0.0.1:8000/docs
 
 ### 2026-08-30 RAG 接进取名流程 + 名字收藏功能 + 前端全面改版
 
-- RAG 接进取名：取名时先向量检索诗词，Top-K 诗句拼入 Prompt，LLM 生成带真实出处的名字
+- RAG 接进取名：取名时先向量检索诗词，诗句拼入 Prompt，LLM 生成带真实出处的名字
 - 新增 `NameFavorite` 模型与 Alembic 迁移，收藏数据入库
 - 新增 `NameFavoriteRepository`、`FavoritesService` 分层实现
 - 新增接口：`POST /name/favorite`、`GET /name/favorites`、`DELETE /name/delete/{id}`
