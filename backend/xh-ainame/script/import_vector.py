@@ -58,9 +58,10 @@ async def main():
     await engine.dispose()
 
 
-# if __name__ == '__main__':
-#已导入全部
-#     asyncio.run(main())
+if __name__ == '__main__':
+# 已导入全部
+    asyncio.run(main())
+
 
 
 
