@@ -1,37 +1,51 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
-		
-	
+	"pages": [
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": ""
+				"navigationBarTitleText": "鸿运取名",
+				"navigationBarBackgroundColor": "#FAF4EA",
+				"backgroundColor": "#FAF4EA"
 			}
 		},
 		{
 			"path": "pages/register/register",
 			"style": {
-				"navigationBarTitleText": ""
+				"navigationBarTitleText": "注册账号",
+				"navigationBarBackgroundColor": "#FAF4EA",
+				"backgroundColor": "#FAF4EA"
 			}
 		},
 		{
 			"path": "pages/name/name",
 			"style": {
-				"navigationBarTitleText": ""
+				"navigationBarTitleText": "鸿运取名",
+				"navigationBarBackgroundColor": "#FFF4E0",
+				"backgroundColor": "#FAF4EA"
 			}
 		},
 		{
 			"path": "pages/history/history",
 			"style": {
-				"navigationBarTitleText": "取名历史"
+				"navigationBarTitleText": "取名历史",
+				"navigationBarBackgroundColor": "#FAF4EA",
+				"backgroundColor": "#FAF4EA"
+			}
+		},
+		{
+			"path": "pages/favorite/favorite",
+			"style": {
+				"navigationBarTitleText": "我的收藏",
+				"navigationBarBackgroundColor": "#FFF4E0",
+				"backgroundColor": "#FAF4EA"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarTitleText": "鸿运取名",
+		"navigationBarBackgroundColor": "#FAF4EA",
+		"backgroundColor": "#FAF4EA"
 	},
 	"uniIdRouter": {}
 }

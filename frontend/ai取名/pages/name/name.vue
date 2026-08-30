@@ -1,902 +1,599 @@
 <template>
+	<view class="page">
+		<!-- 顶部品牌区 -->
+		<view class="hero anim-fade-up">
+			<view class="header-top">
+				<view class="brand">
+					<text class="logo">✨ 鸿运取名</text>
+					<text class="subtitle">AI 国学智能命名助手</text>
+				</view>
+				<view class="actions">
+					<view class="action-chip" @click="goHistory">
+						<text>📜</text><text>历史</text>
+					</view>
+					<view class="action-chip" @click="goFavorite">
+						<text>❤</text><text>收藏</text>
+					</view>
+				</view>
+			</view>
+			<text class="desc">结合诗经、楚辞、唐诗宋词，为宝宝寻找寓意美好的名字</text>
+		</view>
 
-<view class="page">
+		<!-- 输入卡片 -->
+		<view class="card anim-fade-up" :style="{ animationDelay: '70ms' }">
+			<view class="field">
+				<text class="label">宝宝姓氏</text>
+				<view class="input-wrap">
+					<input v-model="form.surname" class="input" maxlength="2" placeholder="例如：李" placeholder-class="ph" />
+				</view>
+			</view>
 
+			<view class="field">
+				<text class="label">宝宝性别</text>
+				<view class="chip-row">
+					<view
+						v-for="g in genderOptions"
+						:key="g.value"
+						class="chip"
+						:class="{ active: form.gender === g.value }"
+						@click="form.gender = g.value"
+					>{{ g.label }}</view>
+				</view>
+			</view>
 
-	<!-- 顶部区域 -->
+			<view class="field">
+				<text class="label">名字长度</text>
+				<view class="chip-row">
+					<view
+						v-for="l in lengthOptions"
+						:key="l.value"
+						class="chip"
+						:class="{ active: form.length === l.value }"
+						@click="form.length = l.value"
+					>{{ l.label }}</view>
+				</view>
+			</view>
 
-	<view class="header">
+			<view class="field">
+				<text class="label">父母寄语</text>
+				<view class="textarea-wrap">
+					<textarea
+						v-model="form.other"
+						class="textarea"
+						placeholder="例如：希望孩子温柔、有智慧、平安快乐"
+						placeholder-class="ph"
+					/>
+				</view>
+			</view>
 
-		<view class="header-top">
-			<text class="logo">
-				✨ 鸿运取名
-			</text>
-			<view class="history-btn" @click="goHistory">
-				<text>📜 历史</text>
+			<button class="generate" :disabled="loading" @click="generate">
+				<view v-if="loading" class="spinner light"></view>
+				<text>{{ loading ? 'AI 正在取名...' : '✨ 开始取名' }}</text>
+			</button>
+		</view>
+
+		<!-- 等待动画（分阶段提示，优化等待体验） -->
+		<view v-if="loading" class="loading-box anim-fade-in">
+			<view class="loading-orb">
+				<view class="ring"></view>
+				<text class="orb-core">✨</text>
+			</view>
+			<text class="loading-title">{{ stageText }}</text>
+			<view class="dots">
+				<view v-for="i in 4" :key="i" class="dot" :class="{ on: stageIndex >= i - 1 }"></view>
+			</view>
+			<text class="loading-desc">正在为你翻阅典籍、检索诗句、推敲音韵</text>
+		</view>
+
+		<!-- 结果区域 -->
+		<view v-if="!loading && result" class="result">
+			<view v-if="result.message" class="save-warn anim-fade-in">
+				<text>💡 {{ result.message }}</text>
+			</view>
+			<view v-else class="save-tip anim-fade-in">
+				<text>✨ 已为你保存这次取名记录，可在历史中查看</text>
+			</view>
+
+			<text class="result-title">🎉 AI 推荐名字</text>
+
+			<view
+				v-for="(item, index) in result.names"
+				:key="item.name"
+				class="name-card anim-fade-up"
+				:style="{ animationDelay: (index * 110) + 'ms' }"
+			>
+				<text class="name">{{ item.name }}</text>
+
+				<view class="line"></view>
+
+				<view class="info-block">
+					<text class="info">📖 出处</text>
+					<text class="content">{{ item.reference }}</text>
+				</view>
+
+				<view class="info-block">
+					<text class="info">🌱 寓意</text>
+					<text class="content">{{ item.moral }}</text>
+				</view>
+
+				<button
+					class="save"
+					:class="{ saved: isFavorited(item.name) }"
+					:disabled="favoritingName === item.name || isFavorited(item.name)"
+					@click="favorite(item)"
+				>
+					{{ isFavorited(item.name) ? '♥ 已收藏' : '♡ 收藏名字' }}
+				</button>
 			</view>
 		</view>
-
-		<text class="subtitle">
-			AI国学智能命名助手
-		</text>
-
-
-		<text class="desc">
-			结合诗经、楚辞、唐诗宋词
-			为宝宝寻找寓意美好的名字
-		</text>
-
-
 	</view>
-
-
-
-	<!-- 输入卡片 -->
-
-	<view class="card">
-
-
-		<text class="label">
-			宝宝姓氏
-		</text>
-
-
-		<input
-			v-model="form.surname"
-			class="input"
-			placeholder="例如：李"
-		/>
-
-
-
-
-		<text class="label">
-			宝宝性别
-		</text>
-
-
-		<view class="select-box">
-
-
-			<button
-				@click="form.gender='男'"
-				:class="{active:form.gender==='男'}"
-			>
-				男孩
-			</button>
-
-
-
-			<button
-				@click="form.gender='女'"
-				:class="{active:form.gender==='女'}"
-			>
-				女孩
-			</button>
-
-
-		</view>
-
-
-
-
-		<text class="label">
-			名字长度
-		</text>
-
-
-
-		<view class="select-box">
-
-
-			<button
-				@click="form.length='两字'"
-				:class="{active:form.length==='两字'}"
-			>
-				单字名
-			</button>
-
-
-
-			<button
-				@click="form.length='三字'"
-				:class="{active:form.length==='三字'}"
-			>
-				双字名
-			</button>
-
-
-
-		</view>
-
-
-
-
-
-		<text class="label">
-			父母寄语
-		</text>
-
-
-		<textarea
-			v-model="form.other"
-			class="textarea"
-			placeholder="例如：希望孩子温柔、有智慧、平安快乐"
-		/>
-
-
-		<button
-			class="generate"
-			@click="generate"
-			:disabled="loading"
-		>
-
-			{{loading?'AI正在取名...':'✨ 开始取名'}}
-
-		</button>
-
-
-
-	</view>
-
-
-
-
-
-	<!-- AI等待动画 -->
-
-
-	<view
-		v-if="loading"
-		class="loading-box"
-	>
-
-
-		<view class="magic">
-
-			✨
-
-		</view>
-
-
-		<text class="loading-title">
-
-			AI正在为宝宝寻找好名字
-
-		</text>
-
-
-		<text class="loading-desc">
-
-			正在翻阅诗经、楚辞、唐诗宋词...
-
-		</text>
-
-
-
-		<text class="loading-desc">
-
-			请耐心等待几秒钟
-
-		</text>
-
-
-
-	</view>
-
-
-
-
-
-
-
-	<!-- 结果区域 -->
-
-
-	<view
-		v-if="result"
-		class="result"
-	>
-
-		<!-- 保存成功提示 -->
-		<view v-if="showSaveTip" class="save-tip">
-			<text>✨ 已为你保存这次取名记录，可在历史中查看</text>
-		</view>
-
-		<text class="result-title">
-
-			🎉 AI推荐名字
-
-		</text>
-
-
-
-		<view
-			v-for="item in result.names"
-			:key="item.name"
-			class="name-card"
-		>
-
-
-			<text class="name">
-
-				{{item.name}}
-
-			</text>
-
-
-
-			<view class="line"></view>
-
-
-
-			<text class="info">
-
-				📖 出处
-
-			</text>
-
-
-			<text class="content">
-
-				{{item.reference}}
-
-			</text>
-
-
-
-
-			<text class="info">
-
-				🌱 寓意
-
-			</text>
-
-
-			<text class="content">
-
-				{{item.moral}}
-
-			</text>
-
-
-
-			<button class="save">
-
-				❤️ 收藏名字
-
-			</button>
-
-
-
-		</view>
-
-
-	</view>
-
-
-</view>
-
 </template>
 
-
-
-
-
 <script setup>
+import { ref, reactive, onUnmounted } from "vue"
+import API from "../../common/api.js"
 
+const genderOptions = [
+	{ label: "👦 男孩", value: "男" },
+	{ label: "👧 女孩", value: "女" }
+]
 
-import {
-	ref
-} from "vue"
+const lengthOptions = [
+	{ label: "单字名", value: "两字" },
+	{ label: "双字名", value: "三字" }
+]
 
-
-
-
-
-const form=ref({
-
-	surname:"",
-
-	gender:"",
-
-	length:"三字",
-
-	other:"",
-
-	exclude:[]
-
+const form = ref({
+	surname: "",
+	gender: "",
+	length: "三字",
+	other: "",
+	exclude: []
 })
 
+const loading = ref(false)
+const result = ref(null)
+const favoritedNames = reactive({})   // 已收藏名字（本页内状态，避免重复收藏）
+const favoritingName = ref(null)      // 正在收藏的名字，防重复点击
 
+// 等待动画：分阶段文案 + 定时器
+const stages = [
+	"正在翻阅经典典籍…",
+	"正在检索美好诗句…",
+	"正在斟酌音律韵脚…",
+	"正在精雕细琢名字…"
+]
+const stageIndex = ref(0)
+const stageText = ref(stages[0])
+let stageTimer = null
 
-const loading=ref(false)
+const startStage = () => {
+	stageIndex.value = 0
+	stageText.value = stages[0]
+	stageTimer = setInterval(() => {
+		stageIndex.value = (stageIndex.value + 1) % stages.length
+		stageText.value = stages[stageIndex.value]
+	}, 2200)
+}
 
+const stopStage = () => {
+	if (stageTimer) {
+		clearInterval(stageTimer)
+		stageTimer = null
+	}
+}
 
-const result=ref(null)
-
-const showSaveTip=ref(false)
-
-
-
-
-
-const generate=()=>{
-
-
-	if(!form.value.surname){
-
-		uni.showToast({
-
-			title:"请输入宝宝姓氏",
-
-			icon:"none"
-
-		})
-
+// 生成名字
+const generate = async () => {
+	if (!form.value.surname) {
+		uni.showToast({ title: "请输入宝宝姓氏", icon: "none" })
 		return
-
+	}
+	if (!form.value.gender) {
+		uni.showToast({ title: "请选择宝宝性别", icon: "none" })
+		return
 	}
 
-
-
-	if(!form.value.gender){
-
-		uni.showToast({
-
-			title:"请选择宝宝性别",
-
-			icon:"none"
-
-		})
-
-		return
-
-	}
-
-
-
-	// 从本地存储取token
 	const token = uni.getStorageSync("token")
-
-	console.log("当前token:", token ? token.substring(0, 20) + "..." : "空或undefined")
-
-	// 检查是否登录
-	if(!token){
-		uni.showToast({
-			title:"请先登录",
-			icon:"none"
-		})
-		setTimeout(()=>{
-			uni.reLaunch({
-				url:"/pages/index/index"
-			})
-		},1000)
+	if (!token) {
+		uni.showToast({ title: "请先登录", icon: "none" })
+		setTimeout(() => uni.reLaunch({ url: "/pages/index/index" }), 900)
 		return
 	}
 
+	if (loading.value) return // 防重复提交
 
-	loading.value=true
+	loading.value = true
+	result.value = null
+	startStage()
 
-	result.value=null
-
-
-	uni.request({
-
-
-		url:"http://127.0.0.1:8000/name/",
-
-
-		method:"POST",
-
-
-		data:form.value,
-
-
-		header:{
-
-
-			Authorization:"Bearer "+token
-
-
-		},
-
-
-		success(res){
-
-			console.log("取名返回状态码:",res.statusCode)
-			console.log("取名返回数据:",res.data)
-
-			if(res.statusCode===200){
-				result.value=res.data
-				// 显示保存成功提示，3秒后消失
-				showSaveTip.value=true
-				setTimeout(()=>{
-					showSaveTip.value=false
-				},3000)
-			}else if(res.statusCode===401 || res.statusCode===403){
-				// token无效或过期，清除并跳转登录
-				uni.removeStorageSync("token")
-				uni.showToast({
-					title:"登录已过期，请重新登录",
-					icon:"none"
-				})
-				setTimeout(()=>{
-					uni.reLaunch({
-						url:"/pages/index/index"
-					})
-				},1000)
-			}else{
-				const msg=res.data?.detail || "生成失败"
-				uni.showToast({
-					title:msg,
-					icon:"none"
-				})
-			}
-
-		},
-
-
-		fail(err){
-
-			console.log("取名请求失败:",err)
-			uni.showToast({
-				title:"网络错误，请检查后端是否启动",
-				icon:"none"
-			})
-
-		},
-
-
-		complete(){
-
-			loading.value=false
-
-		}
-
-
-	})
-
-
-
+	try {
+		const data = await API.generateName(form.value)
+		result.value = data
+	} catch (e) {
+		uni.showToast({ title: e.message || "生成失败", icon: "none" })
+	} finally {
+		loading.value = false
+		stopStage()
+	}
 }
 
-
-// 跳转到历史记录页面
-const goHistory=()=>{
-	uni.navigateTo({
-		url:"/pages/history/history"
-	})
+// 收藏名字
+const favorite = async (item) => {
+	if (favoritingName.value) return
+	favoritingName.value = item.name
+	try {
+		await API.addFavorite({
+			name: item.name,
+			reference: item.reference,
+			moral: item.moral
+		})
+		favoritedNames[item.name] = true
+		uni.showToast({ title: "已收藏 ♥", icon: "none" })
+	} catch (e) {
+		uni.showToast({ title: e.message || "收藏失败", icon: "none" })
+	} finally {
+		favoritingName.value = null
+	}
 }
 
+const isFavorited = (name) => !!favoritedNames[name]
 
+const goHistory = () => {
+	uni.navigateTo({ url: "/pages/history/history" })
+}
 
+const goFavorite = () => {
+	uni.navigateTo({ url: "/pages/favorite/favorite" })
+}
+
+onUnmounted(() => {
+	stopStage()
+})
 </script>
 
-
-
-
-
 <style>
-
-
-.page{
-
-
-	min-height:100vh;
-
-	background:#fff7eb;
-
-	padding:50rpx 35rpx;
-
-
+.page {
+	min-height: 100vh;
+	background: linear-gradient(180deg, #FFF4E0 0%, #FAF4EA 500rpx);
+	padding: 50rpx 32rpx 90rpx;
 }
 
-
-
-
-.header{
-
-
-	text-align:center;
-
-	margin-bottom:50rpx;
-
-
+/* 顶部 */
+.hero {
+	margin-bottom: 40rpx;
 }
 
-.header-top{
-	display:flex;
-	justify-content:space-between;
-	align-items:center;
+.header-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
 }
 
-.history-btn{
-	background:#fffaf3;
-	padding:12rpx 25rpx;
-	border-radius:30rpx;
-	font-size:26rpx;
-	color:#946638;
+.brand {
+	display: flex;
+	flex-direction: column;
 }
 
-.save-tip{
-	background:#fff3e0;
-	border:2rpx solid #ffcc80;
-	border-radius:20rpx;
-	padding:20rpx 25rpx;
-	margin-bottom:25rpx;
-	text-align:center;
-	font-size:26rpx;
-	color:#e65100;
+.logo {
+	font-size: 48rpx;
+	font-weight: bold;
+	background: linear-gradient(135deg, #9B6B3C, #C58B4B);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
 }
 
-
-
-.logo{
-
-
-	display:block;
-
-	font-size:55rpx;
-
-	font-weight:bold;
-
-	color:#946638;
-
-
+.subtitle {
+	font-size: 24rpx;
+	color: #8C735C;
+	margin-top: 10rpx;
 }
 
-
-
-
-.subtitle{
-
-
-	display:block;
-
-	margin-top:20rpx;
-
-	font-size:35rpx;
-
-	color:#b88655;
-
-
+.actions {
+	display: flex;
+	gap: 16rpx;
 }
 
-
-
-
-.desc{
-
-
-	display:block;
-
-	margin-top:25rpx;
-
-	color:#8c735c;
-
-	line-height:45rpx;
-
-
+.action-chip {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 14rpx 24rpx;
+	background: rgba(255, 255, 255, 0.85);
+	border-radius: 999rpx;
+	font-size: 24rpx;
+	color: #8C735C;
+	box-shadow: 0 8rpx 20rpx rgba(154, 107, 60, 0.10);
+	border: 2rpx solid rgba(232, 185, 107, 0.22);
 }
 
-
-
-
-
-.card{
-
-
-	background:white;
-
-	border-radius:40rpx;
-
-	padding:45rpx;
-
-
+.desc {
+	display: block;
+	margin-top: 26rpx;
+	font-size: 26rpx;
+	color: #B9A48E;
+	line-height: 42rpx;
 }
 
-
-
-
-.label{
-
-
-	display:block;
-
-	margin:30rpx 0 15rpx;
-
-	color:#8b5e34;
-
-
+/* 表单卡片 */
+.card {
+	background: rgba(255, 255, 255, 0.94);
+	border-radius: 40rpx;
+	padding: 44rpx 36rpx;
+	box-shadow: 0 18rpx 50rpx rgba(154, 107, 60, 0.13);
+	border: 2rpx solid rgba(232, 185, 107, 0.18);
 }
 
-
-
-
-.input{
-
-
-	background:#fffaf3;
-
-	border-radius:20rpx;
-
-	padding:20rpx;
-
-
+.field {
+	margin-bottom: 36rpx;
 }
 
-
-
-
-.select-box{
-
-
-	display:flex;
-
-	gap:30rpx;
-
-
+.label {
+	display: block;
+	color: #8C735C;
+	margin-bottom: 16rpx;
+	font-size: 27rpx;
+	font-weight: bold;
 }
 
-
-
-
-.select-box button{
-
-
-	flex:1;
-
-	background:#f8ead7;
-
-	border-radius:30rpx;
-
-
+.input-wrap {
+	display: flex;
+	align-items: center;
+	height: 94rpx;
+	background: #FFF9F0;
+	border-radius: 24rpx;
+	padding: 0 28rpx;
+	border: 2rpx solid #F0E6D6;
 }
 
-
-
-
-.active{
-
-
-	background:#c58b4b!important;
-
-	color:white;
-
-
+.input {
+	flex: 1;
+	height: 94rpx;
+	font-size: 30rpx;
+	color: #4A3728;
 }
 
-
-
-
-
-.textarea{
-
-
-	margin-top:10rpx;
-
-	background:#fffaf3;
-
-	border-radius:20rpx;
-
-	padding:20rpx;
-
-	height:180rpx;
-
-
+.ph {
+	color: #C9BBA4;
 }
 
-
-
-
-.generate{
-
-
-	margin-top:50rpx;
-
-	background:#c58b4b;
-
-	color:white;
-
-	border-radius:50rpx;
-
-
+.chip-row {
+	display: flex;
+	gap: 20rpx;
 }
 
-
-
-
-
-
-.loading-box{
-
-
-	margin-top:40rpx;
-
-	background:white;
-
-	border-radius:40rpx;
-
-	padding:60rpx;
-
-	text-align:center;
-
-
+.chip {
+	flex: 1;
+	text-align: center;
+	height: 88rpx;
+	line-height: 88rpx;
+	background: #FFF9F0;
+	border-radius: 24rpx;
+	color: #8C735C;
+	font-size: 28rpx;
+	border: 2rpx solid #F0E6D6;
+	transition: all 0.25s;
 }
 
-
-
-
-.magic{
-
-
-	font-size:90rpx;
-
+.chip.active {
+	background: linear-gradient(135deg, #E8B96B, #C58B4B);
+	color: #fff;
+	border-color: transparent;
+	box-shadow: 0 10rpx 22rpx rgba(197, 139, 75, 0.32);
 }
 
-
-
-
-.loading-title{
-
-
-	display:block;
-
-	font-size:38rpx;
-
-	color:#946638;
-
-	margin-top:30rpx;
-
-
+.textarea-wrap {
+	background: #FFF9F0;
+	border-radius: 24rpx;
+	padding: 24rpx 28rpx;
+	border: 2rpx solid #F0E6D6;
 }
 
-
-
-
-.loading-desc{
-
-
-	display:block;
-
-	margin-top:20rpx;
-
-	color:#999;
-
-
+.textarea {
+	width: 100%;
+	height: 160rpx;
+	font-size: 29rpx;
+	color: #4A3728;
+	line-height: 44rpx;
 }
 
-
-
-
-
-.result{
-
-
-	margin-top:50rpx;
-
-
+.generate {
+	margin-top: 12rpx;
+	height: 102rpx;
+	line-height: 102rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 16rpx;
+	background: linear-gradient(135deg, #E8B96B, #C58B4B);
+	color: #fff;
+	font-size: 33rpx;
+	font-weight: bold;
+	border-radius: 999rpx;
+	box-shadow: 0 16rpx 34rpx rgba(197, 139, 75, 0.38);
 }
 
-
-
-
-.result-title{
-
-
-	font-size:40rpx;
-
-	color:#946638;
-
-
+.generate[disabled] {
+	opacity: 0.75;
 }
 
-
-
-
-
-.name-card{
-
-
-	margin-top:30rpx;
-
-	background:white;
-
-	padding:40rpx;
-
-	border-radius:40rpx;
-
-
+.spinner {
+	width: 32rpx;
+	height: 32rpx;
+	border: 4rpx solid rgba(255, 255, 255, 0.4);
+	border-top-color: #fff;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
 }
 
-
-
-
-.name{
-
-
-	display:block;
-
-	text-align:center;
-
-	font-size:70rpx;
-
-	font-weight:bold;
-
-	color:#c58b4b;
-
-
+/* 等待动画 */
+.loading-box {
+	margin-top: 40rpx;
+	background: rgba(255, 255, 255, 0.9);
+	border-radius: 40rpx;
+	padding: 64rpx 40rpx;
+	text-align: center;
+	box-shadow: 0 18rpx 50rpx rgba(154, 107, 60, 0.12);
 }
 
-
-
-
-.line{
-
-
-	height:2rpx;
-
-	background:#eee;
-
-	margin:30rpx 0;
-
-
+.loading-orb {
+	position: relative;
+	width: 130rpx;
+	height: 130rpx;
+	margin: 0 auto 34rpx;
 }
 
-
-
-
-.info{
-
-
-	display:block;
-
-	color:#946638;
-
-	font-size:30rpx;
-
-	margin-top:20rpx;
-
-	font-weight:bold;
-
-
+.ring {
+	position: absolute;
+	inset: 0;
+	border: 4rpx dashed rgba(197, 139, 75, 0.5);
+	border-radius: 50%;
+	animation: spin 3.2s linear infinite;
 }
 
-
-
-
-.content{
-
-
-	display:block;
-
-	color:#666;
-
-	line-height:45rpx;
-
-	margin-top:10rpx;
-
-
+.orb-core {
+	position: absolute;
+	inset: 22rpx;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #E8B96B, #C58B4B);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 40rpx;
+	animation: pulse 1.8s ease-in-out infinite;
 }
 
-
-
-
-.save{
-
-
-	margin-top:30rpx;
-
-	background:#f5dfc2;
-
-	color:#946638;
-
-	border-radius:40rpx;
-
-
+.loading-title {
+	display: block;
+	font-size: 34rpx;
+	font-weight: bold;
+	color: #4A3728;
 }
 
+.dots {
+	display: flex;
+	justify-content: center;
+	gap: 14rpx;
+	margin-top: 30rpx;
+}
 
+.dot {
+	width: 16rpx;
+	height: 16rpx;
+	border-radius: 50%;
+	background: #F0E6D6;
+	transition: all 0.35s;
+}
 
+.dot.on {
+	background: #C58B4B;
+	transform: scale(1.25);
+}
+
+.loading-desc {
+	display: block;
+	margin-top: 30rpx;
+	color: #B9A48E;
+	font-size: 24rpx;
+}
+
+/* 结果 */
+.result {
+	margin-top: 46rpx;
+}
+
+.save-tip,
+.save-warn {
+	border-radius: 20rpx;
+	padding: 22rpx 28rpx;
+	margin-bottom: 30rpx;
+	text-align: center;
+	font-size: 25rpx;
+}
+
+.save-tip {
+	background: rgba(232, 185, 107, 0.16);
+	color: #9B6B3C;
+}
+
+.save-warn {
+	background: #FFF3E0;
+	color: #C77F36;
+}
+
+.result-title {
+	display: block;
+	font-size: 40rpx;
+	font-weight: bold;
+	color: #4A3728;
+	margin-bottom: 28rpx;
+}
+
+.name-card {
+	background: rgba(255, 255, 255, 0.94);
+	padding: 44rpx 38rpx;
+	border-radius: 36rpx;
+	margin-bottom: 28rpx;
+	box-shadow: 0 14rpx 38rpx rgba(154, 107, 60, 0.12);
+	border: 2rpx solid rgba(232, 185, 107, 0.18);
+}
+
+.name {
+	display: block;
+	text-align: center;
+	font-size: 72rpx;
+	font-weight: bold;
+	background: linear-gradient(135deg, #C58B4B, #9B6B3C);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.line {
+	height: 2rpx;
+	background: #F0E6D6;
+	margin: 30rpx 0;
+}
+
+.info-block {
+	margin-top: 22rpx;
+}
+
+.info {
+	display: block;
+	color: #C58B4B;
+	font-size: 26rpx;
+	font-weight: bold;
+}
+
+.content {
+	display: block;
+	color: #6B5843;
+	line-height: 44rpx;
+	margin-top: 12rpx;
+	font-size: 28rpx;
+}
+
+.save {
+	margin-top: 34rpx;
+	height: 84rpx;
+	line-height: 84rpx;
+	background: #FBF0DE;
+	color: #C58B4B;
+	border-radius: 999rpx;
+	font-size: 28rpx;
+	border: 2rpx solid rgba(232, 185, 107, 0.35);
+	transition: all 0.25s;
+}
+
+.save.saved {
+	background: linear-gradient(135deg, #E8A98B, #D98C7A);
+	color: #fff;
+	border-color: transparent;
+}
+
+.save[disabled] {
+	opacity: 0.7;
+}
 </style>

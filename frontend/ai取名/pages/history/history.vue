@@ -1,22 +1,26 @@
 <template>
 	<view class="page">
 		<!-- 顶部 -->
-		<view class="header">
+		<view class="header anim-fade-up">
 			<text class="title">📜 取名历史</text>
 			<text class="subtitle">每一次取名，都是一份美好的期待</text>
 		</view>
 
-		<!-- 加载中 -->
-		<view v-if="loading" class="loading-box">
-			<text class="loading-text">正在回忆你的取名记录...</text>
+		<!-- 加载骨架屏 -->
+		<view v-if="loading" class="history-list">
+			<view v-for="i in 3" :key="i" class="history-card skeleton-card">
+				<view class="skeleton sk-head"></view>
+				<view class="skeleton sk-line"></view>
+				<view class="skeleton sk-line short"></view>
+			</view>
 		</view>
 
 		<!-- 空状态 -->
-		<view v-else-if="histories.length === 0" class="empty-box">
+		<view v-else-if="histories.length === 0" class="empty-box anim-fade-up">
 			<text class="empty-emoji">🌸</text>
 			<text class="empty-title">还没有取名记录</text>
 			<text class="empty-desc">快去为宝宝取一个好听的名字吧~</text>
-			<button class="empty-btn" @click="goName">去取名</button>
+			<button class="empty-btn" @click="goName">✨ 去取名</button>
 		</view>
 
 		<!-- 历史记录列表 -->
@@ -24,22 +28,23 @@
 			<view
 				v-for="(item, index) in histories"
 				:key="item.id"
-				class="history-card"
+				class="history-card anim-fade-up"
+				:style="{ animationDelay: (index * 60) + 'ms' }"
 				@click="toggleExpand(index)"
 			>
 				<!-- 卡片头部 -->
 				<view class="card-header">
 					<view class="header-left">
 						<text class="surname">{{ item.surname }}姓</text>
-						<text class="tag" :class="item.gender === '男' ? 'boy' : 'girl'">
+						<text class="tag" :class="item.gender === '男' ? 'boy' : item.gender === '女' ? 'girl' : 'all'">
 							{{ item.gender === '男' ? '👦 男孩' : item.gender === '女' ? '👧 女孩' : '🎈 不限' }}
 						</text>
 						<text class="tag length">{{ item.length }}</text>
 					</view>
-					<text class="arrow" :class="{ expanded: expandedIndex === index }">▼</text>
+					<text class="arrow" :class="{ expanded: expandedIndex === index }">▾</text>
 				</view>
 
-				<!-- 其他要求 -->
+				<!-- 寄语 -->
 				<view v-if="item.other" class="other-row">
 					<text class="other-label">💭 寄语：</text>
 					<text class="other-content">{{ item.other }}</text>
@@ -49,7 +54,7 @@
 				<text class="time">🕐 {{ formatTime(item.created_at) }}</text>
 
 				<!-- 展开的名字详情 -->
-				<view v-if="expandedIndex === index" class="names-detail">
+				<view v-if="expandedIndex === index" class="names-detail anim-fade-in">
 					<view class="divider"></view>
 					<text class="detail-title">✨ AI 推荐的名字</text>
 					<view
@@ -74,51 +79,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref } from "vue"
+import { onShow } from "@dcloudio/uni-app"
+import API from "../../common/api.js"
 
 const histories = ref([])
 const loading = ref(true)
 const expandedIndex = ref(-1)
 
-// 页面加载时获取历史记录
-onMounted(() => {
+// 每次进入页面都刷新（从取名页返回后能看到最新记录）
+onShow(() => {
 	getHistory()
 })
 
-// 获取历史记录
-const getHistory = () => {
-	const token = uni.getStorageSync("token")
-
-	uni.request({
-		url: "http://127.0.0.1:8000/name/history",
-		method: "GET",
-		header: {
-			Authorization: "Bearer " + token
-		},
-		success(res) {
-			if (res.data && res.data.histories) {
-				histories.value = res.data.histories
-			}
-		},
-		fail() {
-			uni.showToast({
-				title: "获取历史记录失败",
-				icon: "none"
-			})
-		},
-		complete() {
-			loading.value = false
-		}
-	})
+const getHistory = async () => {
+	loading.value = true
+	try {
+		const data = await API.getHistory()
+		histories.value = data.histories || []
+	} catch (e) {
+		uni.showToast({ title: e.message || "获取历史记录失败", icon: "none" })
+	} finally {
+		loading.value = false
+	}
 }
 
 // 展开/收起
 const toggleExpand = (index) => {
-	if (expandedIndex.value === index) {
-		expandedIndex.value = -1
-	} else {
-		expandedIndex.value = index
-	}
+	expandedIndex.value = expandedIndex.value === index ? -1 : index
 }
 
 // 格式化时间
@@ -133,97 +121,107 @@ const formatTime = (timeStr) => {
 	return `${year}-${month}-${day} ${hour}:${minute}`
 }
 
-// 去取名页
 const goName = () => {
-	uni.reLaunch({
-		url: "/pages/name/name"
-	})
+	uni.reLaunch({ url: "/pages/name/name" })
 }
 </script>
 
 <style>
 .page {
 	min-height: 100vh;
-	background: #fff7eb;
-	padding: 40rpx 30rpx;
+	background: linear-gradient(180deg, #FFF4E0 0%, #FAF4EA 420rpx);
+	padding: 40rpx 30rpx 80rpx;
 }
 
 .header {
 	text-align: center;
-	margin-bottom: 40rpx;
+	margin-bottom: 44rpx;
 }
 
 .title {
 	display: block;
 	font-size: 48rpx;
 	font-weight: bold;
-	color: #946638;
+	color: #4A3728;
 }
 
 .subtitle {
 	display: block;
-	font-size: 28rpx;
-	color: #b88655;
-	margin-top: 15rpx;
+	font-size: 26rpx;
+	color: #B9A48E;
+	margin-top: 14rpx;
 }
 
-/* 加载中 */
-.loading-box {
-	text-align: center;
-	padding: 100rpx 0;
+/* 骨架屏 */
+.skeleton-card {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
 }
 
-.loading-text {
-	color: #b88655;
-	font-size: 30rpx;
+.sk-head {
+	height: 44rpx;
+	width: 46%;
+}
+
+.sk-line {
+	height: 28rpx;
+	width: 100%;
+}
+
+.sk-line.short {
+	width: 60%;
 }
 
 /* 空状态 */
 .empty-box {
 	text-align: center;
-	padding: 120rpx 40rpx;
+	padding: 140rpx 40rpx;
 }
 
 .empty-emoji {
 	display: block;
-	font-size: 120rpx;
+	font-size: 110rpx;
+	margin-bottom: 30rpx;
+	animation: float 3s ease-in-out infinite;
 }
 
 .empty-title {
 	display: block;
 	font-size: 36rpx;
-	color: #946638;
-	margin-top: 30rpx;
 	font-weight: bold;
+	color: #4A3728;
 }
 
 .empty-desc {
 	display: block;
-	font-size: 28rpx;
-	color: #b88655;
-	margin-top: 20rpx;
+	font-size: 27rpx;
+	color: #B9A48E;
+	margin-top: 18rpx;
 }
 
 .empty-btn {
-	margin-top: 50rpx;
-	background: #c58b4b;
-	color: white;
-	border-radius: 50rpx;
-	width: 300rpx;
+	margin-top: 56rpx;
+	width: 320rpx;
+	background: linear-gradient(135deg, #E8B96B, #C58B4B);
+	color: #fff;
+	border-radius: 999rpx;
+	box-shadow: 0 14rpx 30rpx rgba(197, 139, 75, 0.35);
 }
 
-/* 历史记录列表 */
+/* 列表 */
 .history-list {
 	display: flex;
 	flex-direction: column;
-	gap: 25rpx;
+	gap: 26rpx;
 }
 
 .history-card {
-	background: white;
-	border-radius: 30rpx;
-	padding: 35rpx;
-	box-shadow: 0 8rpx 25rpx rgba(150, 100, 50, 0.1);
+	background: rgba(255, 255, 255, 0.94);
+	border-radius: 32rpx;
+	padding: 36rpx;
+	box-shadow: 0 12rpx 32rpx rgba(154, 107, 60, 0.10);
+	border: 2rpx solid rgba(232, 185, 107, 0.16);
 }
 
 .card-header {
@@ -235,40 +233,45 @@ const goName = () => {
 .header-left {
 	display: flex;
 	align-items: center;
-	gap: 15rpx;
+	gap: 14rpx;
 	flex-wrap: wrap;
 }
 
 .surname {
 	font-size: 36rpx;
 	font-weight: bold;
-	color: #946638;
+	color: #4A3728;
 }
 
 .tag {
-	font-size: 24rpx;
-	padding: 6rpx 18rpx;
-	border-radius: 20rpx;
+	font-size: 23rpx;
+	padding: 8rpx 20rpx;
+	border-radius: 999rpx;
 }
 
 .tag.boy {
-	background: #e3f2fd;
-	color: #1976d2;
+	background: #EAF3FB;
+	color: #5A86B8;
 }
 
 .tag.girl {
-	background: #fce4ec;
-	color: #c2185b;
+	background: #FBEAEE;
+	color: #C57F91;
+}
+
+.tag.all {
+	background: #F6E3C8;
+	color: #9B6B3C;
 }
 
 .tag.length {
-	background: #fff3e0;
-	color: #e65100;
+	background: #FFF3E0;
+	color: #C77F36;
 }
 
 .arrow {
-	font-size: 24rpx;
-	color: #c58b4b;
+	font-size: 26rpx;
+	color: #C58B4B;
 	transition: transform 0.3s;
 }
 
@@ -283,49 +286,51 @@ const goName = () => {
 }
 
 .other-label {
-	font-size: 26rpx;
-	color: #946638;
+	font-size: 25rpx;
+	color: #8C735C;
 	flex-shrink: 0;
+	font-weight: bold;
 }
 
 .other-content {
-	font-size: 26rpx;
-	color: #666;
+	font-size: 25rpx;
+	color: #6B5843;
 	flex: 1;
 	line-height: 40rpx;
 }
 
 .time {
 	display: block;
-	font-size: 24rpx;
-	color: #999;
-	margin-top: 15rpx;
+	font-size: 22rpx;
+	color: #B9A48E;
+	margin-top: 16rpx;
 }
 
-/* 展开的名字详情 */
+/* 展开详情 */
 .names-detail {
 	margin-top: 10rpx;
 }
 
 .divider {
 	height: 2rpx;
-	background: #f0e6d6;
-	margin: 25rpx 0;
+	background: #F0E6D6;
+	margin: 26rpx 0;
 }
 
 .detail-title {
 	display: block;
-	font-size: 30rpx;
-	color: #946638;
+	font-size: 29rpx;
+	color: #8C735C;
 	font-weight: bold;
 	margin-bottom: 20rpx;
 }
 
 .name-item {
-	background: #fffaf3;
-	border-radius: 20rpx;
-	padding: 25rpx;
-	margin-bottom: 20rpx;
+	background: #FFF9F0;
+	border-radius: 22rpx;
+	padding: 28rpx;
+	margin-bottom: 18rpx;
+	border: 2rpx solid #F6EDDE;
 }
 
 .name-item:last-child {
@@ -335,10 +340,13 @@ const goName = () => {
 .name-text {
 	display: block;
 	text-align: center;
-	font-size: 48rpx;
+	font-size: 46rpx;
 	font-weight: bold;
-	color: #c58b4b;
-	margin-bottom: 15rpx;
+	background: linear-gradient(135deg, #C58B4B, #9B6B3C);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	margin-bottom: 14rpx;
 }
 
 .name-info {
@@ -347,16 +355,18 @@ const goName = () => {
 
 .info-label {
 	display: block;
-	font-size: 24rpx;
-	color: #946638;
+	font-size: 23rpx;
+	color: #C58B4B;
 	font-weight: bold;
 }
 
 .info-content {
 	display: block;
-	font-size: 26rpx;
-	color: #666;
+	font-size: 25rpx;
+	color: #6B5843;
 	line-height: 40rpx;
 	margin-top: 8rpx;
 }
 </style>
+
+
