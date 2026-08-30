@@ -15,13 +15,16 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "poetry"
 def file_meta(filename: str) -> Tuple[str, str] | None:
     """按文件名自动识别（来源, 朝代）：
     - ci.song.*    → 宋词
-    - poet.song.*  → 宋诗
+    - poet.tang.*  → 全唐诗（唐诗）
+    - poet.song.*  → 宋诗（保留识别，防止误判）
     - shijing.*    → 诗经
     - 唐诗*        → 全唐诗
     以后新增同类文件无需改代码
     """
     if filename.startswith("ci.song."):
         return "宋词", "宋"
+    if filename.startswith("poet.tang."):
+        return "全唐诗", "唐"
     if filename.startswith("poet.song."):
         return "宋诗", "宋"
     if filename.startswith("shijing"):
@@ -158,5 +161,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
 
 
