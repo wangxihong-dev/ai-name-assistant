@@ -42,6 +42,16 @@ async def generate_name(name_info:NameIn) ->NameResultSchema:
     milvus_result=milvis_repo.search(collection_name="poetry_vectors",data=[user_vector],limit=5)
 
     poems=[]
+    if name_info.length == "两字":
+        length_desc = "全名2个字（姓氏+1个单字名）"
+    elif name_info.length == "三字":
+        length_desc = "全名3个字（姓氏+2个双字名）"
+    elif name_info.length == "四字":
+        length_desc = "全名4个字（姓氏+3个字）"
+    else:
+        length_desc = "不限字数"
+
+
 
     for i ,hit in enumerate(milvus_result[0],1):
         poetry_text=hit["entity"]["text"]
@@ -51,7 +61,7 @@ async def generate_name(name_info:NameIn) ->NameResultSchema:
     retrieved_text="\n".join(poems)
 
     prompt = (f"以下是从诗词库检索到的相关诗句，（必须从中挑选出处，禁止编造未提供的出处）：{retrieved_text}"
-                f"用户的姓氏{name_info.surname},用户的性别：{name_info.gender},字数的要求：{name_info.length},"
+                f"用户的姓氏{name_info.surname},用户的性别：{name_info.gender},字数的要求：{length_desc},"
               f"用户的其他要求：{name_info.other},用户不想要的名字{','.join(name_info.exclude)}")
 
     result = await agent.ainvoke({
