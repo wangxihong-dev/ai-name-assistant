@@ -65,10 +65,20 @@ async def main():
                     })
 
                 # 5.4 这一首的全部 chunk 一次插入
-                milvus_repo.batch_insert(
-                    collection_name="poetry_vectors",
-                    data=data
-                )
+                # Milvus 建索引时可能短暂无响应导致"连接失败"，
+                # 所以失败重试 3 次（间隔 5 秒），仍失败才交给外层跳过
+                for attempt in range(3):
+                    try:
+                        milvus_repo.batch_insert(
+                            collection_name="poetry_vectors",
+                            data=data
+                        )
+                        break  # 插入成功，跳出重试循环
+                    except Exception as e:
+                        if attempt == 2:  # 第 3 次仍失败，抛出给外层 try 处理
+                            raise
+                        print(f"  插入失败，5 秒后重试 {attempt + 1}/3：{e}", flush=True)
+                        await asyncio.sleep(5)
 
                 success += 1
                 print(f"成功导入 {success}/{total}", flush=True)
@@ -98,3 +108,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
