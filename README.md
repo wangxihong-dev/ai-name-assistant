@@ -93,7 +93,7 @@
 
 ### 后续计划
 
-- [ ] 项目部署上线（前端、后端、MySQL、Milvus 全链路容器化）
+- [x] 项目部署上线（阿里云 ECS 2C4G，Docker Compose 全链路容器化）
 - [ ] 收藏去重 / 已收藏状态标记（可选优化）
 
 
@@ -221,6 +221,17 @@ API 文档：http://127.0.0.1:8000/docs
 
 ## 📝 开发记录
 
+### 2026-08-18 项目初始化——搭建完整项目框架
+
+- 初始化 FastAPI 后端项目脚手架，配置 Alembic 数据库迁移框架
+- 搭建项目分层架构：core（核心模块）、repository（数据访问层）、service（业务逻辑层）、routers（路由层）、schemas（数据模型）、models（ORM 模型）
+- 实现用户认证系统（注册、登录、JWT Token 签发与验证）
+- 集成 DeepSeek API，实现基础 AI 取名功能（LangChain + Agent 结构化输出）
+- 实现邮箱验证码发送功能（QQ 邮箱 SMTP）
+- 初始化 UniApp 前端项目，完成登录、注册、取名三个核心页面
+- 配置 MySQL 数据库连接，完成首次 Alembic 迁移创建用户表
+- 首次提交，项目整体框架搭建完成，前后端可联调运行
+
 ### 2026-08-22 新增历史取名记录功能
 
 - 新增 `NameHistory` 模型，关联用户表
@@ -263,6 +274,19 @@ API 文档：http://127.0.0.1:8000/docs
 - 优化等待体验（分阶段加载动画、骨架屏）与页面性能（统一请求层、防重复提交、入场动画）
 - 后端增加 CORS 配置，支持 H5 前端跨域调用
 
+
+### 2026-08-31 项目部署上线（阿里云 ECS）+ 部署问题修复
+
+- 新增 Docker 部署配置：后端 Dockerfile（Python slim 镜像）、前端 Dockerfile（Nginx 静态部署）、全链路 docker-compose.yml 编排（6 个容器：mysql、etcd、minio、milvus、backend、frontend）
+- 新增 Nginx 反向代理配置，统一入口代理前端静态文件和后端 API
+- 新增 .env 环境变量配置模板，支持数据库、Milvus、邮箱、AI API Key 等配置
+- 解决阿里云 OOM 问题：添加 4GB Swap 交换分区，保障向量导入时内存充足
+- 解决 Milvus 连接超时问题：MILVUS_TIMEOUT=120 加长超时时间
+- 解决向量导入中断问题：单首诗词容错 + 3 次重试机制，出错跳过不中断
+- 解决 SSH 频繁断开问题：配置 ServerAliveInterval 30 心跳保活
+- 完成诗词数据导入（MySQL 15,665 首）+ 向量库导入（Milvus 67,587 条向量记录）
+- 应用已部署至阿里云 ECS（2 核 4G，Ubuntu 22.04），公网可访问
+- 项目从开发、部署到线上运行，全流程打通
 
 ## 👨‍💻 作者
 
