@@ -66,15 +66,15 @@ class AuthHandler(metaclass=SingletonMeta):
 
     def decode_access_token(self, token):
         # ACCESS TOKEN：不可用（过期，或有问题），都用403错误
-        print("收到token:")
-        print(token)
+        #print("收到token:")
+        #print(token)
 
-        print("secret:")
-        print(self.secret)
+        #print("secret:")
+        #print(self.secret)
         try:
             payload = jwt.decode(token, self.secret, algorithms=['HS256'])
-            print("payload:")
-            print(payload)
+            #print("payload:")
+            #print(payload)
             if payload['sub'] != str(TokenTypeEnum.ACCESS_TOKEN.value):
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail='Token类型错误!')
             return int(payload['iss'])
@@ -88,7 +88,7 @@ class AuthHandler(metaclass=SingletonMeta):
         # REFRESH TOKEN：不可用（过期，或有问题），都用401错误
         try:
             payload = jwt.decode(token, self.secret, algorithms=['HS256'])
-            if payload['sub'] != int(TokenTypeEnum.REFRESH_TOKEN.value):
+            if payload['sub'] != str(TokenTypeEnum.REFRESH_TOKEN.value):
                 raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail='Token类型错误')
             return int(payload['iss'])
         except jwt.ExpiredSignatureError:
