@@ -50,7 +50,7 @@ class EmailCodeRepository:
             email_code :EmailCode|None =await self.session.scalar(stmt)
             if email_code is None:
                 return False
-            if (datetime.now() - email_code.created_time) > timedelta(minutes=10):
+            if (datetime.now() - email_code.created_time) > timedelta(minutes=5):
                 return False
             return True
 
