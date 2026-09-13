@@ -1,6 +1,6 @@
 from . import Base
 from sqlalchemy.orm import Mapped,relationship,mapped_column
-from sqlalchemy import Integer,String,DATE
+from sqlalchemy import Integer,String,DATE,UniqueConstraint
 from datetime import date
 from typing import List,TYPE_CHECKING
 
@@ -15,3 +15,7 @@ class LawVersion(Base):
     enforcement_date:Mapped[date] = mapped_column(DATE)
     expiry_date:Mapped[date|None] = mapped_column(DATE,nullable=True)
     law_clauses:Mapped[List["LawClause"]] = relationship("LawClause",back_populates="law_version")
+
+    __table_args__ = (
+        UniqueConstraint('version_name','law_name'),
+    )
