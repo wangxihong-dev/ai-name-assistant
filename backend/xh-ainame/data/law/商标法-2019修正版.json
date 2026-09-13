@@ -1,0 +1,87 @@
+
+  {
+    "law_name": "商标法",
+    "version_name": "2019修正版",
+    "enforcement_date": "2019-11-01",
+    "expiry_date": "2027-01-01",
+    "clauses": [
+      {
+          "clause_number": "第十条第一款",
+          "clause_original": "下列标志不得作为商标使用：",
+          "risk_grade": "禁止使用"
+      },
+
+      {
+        "clause_number": "第十条第一款第（一）项",
+        "clause_original":"同中华人民共和国的国家名称、国旗、国徽、国歌、军旗、军徽、军歌、勋章等相同或者近似的，以及同中央国家机关的名称、标志、所在地特定地点的名称或者标志性建筑物的名称、图形相同的；",
+        "risk_grade":"禁止使用"
+      },
+
+      {
+        "clause_number": "第十条第一款第（二）项",
+        "clause_original":"同外国的国家名称、国旗、国徽、军旗等相同或者近似的，但经该国政府同意的除外；",
+        "risk_grade":"禁止使用"
+      },
+
+      {
+        "clause_number": "第十条第一款第（三）项",
+        "clause_original":"同政府间国际组织的名称、旗帜、徽记等相同或者近似的，但经该组织同意或者不易误导公众的除外；",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十条第一款第（四）项",
+        "clause_original":"与表明实施控制、予以保证的官方标志、检验印记相同或者近似的，但经授权的除外；",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十条第一款第（五）项",
+        "clause_original":"同“红十字”、“红新月”的名称、标志相同或者近似的；",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十条第一款第（六）项",
+        "clause_original":"带有民族歧视性的；",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十条第一款第（七）项",
+        "clause_original":"带有欺骗性，容易使公众对商品的质量等特点或者产地产生误认的；",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十条第一款第（八）项",
+        "clause_original":"有害于社会主义道德风尚或者有其他不良影响的。",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十条第二款",
+        "clause_original":"县级以上行政区划的地名或者公众知晓的外国地名，不得作为商标。但是，地名具有其他含义或者作为集体商标、证明商标组成部分的除外；已经注册的使用地名的商标继续有效。",
+        "risk_grade":"禁止使用"
+      },
+      {
+        "clause_number": "第十一条第一款",
+        "clause_original":"下列标志不得作为商标注册：",
+        "risk_grade":"不予注册"
+      },
+      {
+        "clause_number": "第十一条第一款第（一）项",
+        "clause_original":"仅有本商品的通用名称、图形、型号的；",
+        "risk_grade":"不予注册"
+      },
+      {
+        "clause_number": "第十一条第一款第（二）项",
+        "clause_original":"仅直接表示商品的质量、主要原料、功能、用途、重量、数量及其他特点的；",
+        "risk_grade":"不予注册"
+      },
+      {
+        "clause_number": "第十一条第一款第（三）项",
+        "clause_original":"其他缺乏显著特征的。",
+        "risk_grade":"不予注册"
+      },
+      {
+        "clause_number": "第十一条第二款",
+        "clause_original":"前款所列标志经过使用取得显著特征，并便于识别的，可以作为商标注册。",
+        "risk_grade":"例外规定"
+      }
+    ]
+  }
