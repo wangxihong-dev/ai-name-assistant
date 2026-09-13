@@ -53,3 +53,5 @@ from . import user
 from . import name_history
 from . import poetry
 from . import name_favorite
+from . import law_clause
+from . import law_version
