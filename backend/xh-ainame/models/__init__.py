@@ -55,3 +55,4 @@ from . import poetry
 from . import name_favorite
 from . import law_clause
 from . import law_version
+from . import forbidden_word
