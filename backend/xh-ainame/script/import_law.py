@@ -1,4 +1,3 @@
-
 import json
 from models.law_clause import LawClause
 from models.law_version import LawVersion
