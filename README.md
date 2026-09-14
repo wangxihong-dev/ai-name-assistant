@@ -94,6 +94,8 @@
 ### 后续计划
 
 - [x] 项目部署上线（阿里云 ECS 2C4G，Docker Compose 全链路容器化）
+- [ ] 品牌 / 产品取名（对话式多轮交互）—— 输出结构与法条数据层已完成，Agent 循环开发中
+- [ ] 商标合规校验（《商标法》第十条、第十一条规则引擎）—— 法条已入库 15 条
 - [ ] 收藏去重 / 已收藏状态标记（可选优化）
 
 
@@ -117,20 +119,26 @@ ai-name-assistant
 │       ├── alembic/                      # 数据库迁移
 │       ├── core/                         # 核心模块（认证、邮件、AI Agent）
 │       │   └── milvus.py                 # Milvus 连接客户端
-│       ├── data/poetry/                  # 原始诗词数据（JSON）
+│       ├── data/
+│       │   ├── poetry/                   # 原始诗词数据（JSON）
+│       │   └── law/                      # 法条数据（JSON，一个「法律-版本」一个文件）
 │       ├── models/                       # 数据库模型
 │       │   ├── poetry.py                 # 诗词表
 │       │   ├── name_history.py           # 取名历史表
-│       │   └── name_favorite.py          # 名字收藏表
+│       │   ├── name_favorite.py          # 名字收藏表
+│       │   ├── law_version.py            # 法条版本表（法律名称/版本/施行日/失效日）
+│       │   └── law_clause.py             # 法条条款表（条款号/原文/风险等级）
 │       ├── repository/                   # 数据访问层
 │       │   ├── poetry_reposityory.py     # MySQL 诗词访问
 │       │   ├── milvus_repository.py      # Milvus 访问（建表/插入/搜索）
-│       │   └── name_favorite_repository.py # 收藏数据访问
+│       │   ├── name_favorite_repository.py # 收藏数据访问
+│       │   └── law_repository.py         # 法条数据访问
 │       ├── routers/                      # 路由层
 │       ├── schemas/                      # Pydantic 数据模型
 │       ├── script/                       # 工具脚本
 │       │   ├── import_poetry.py          # JSON → MySQL 诗词导入
 │       │   ├── import_vector.py          # MySQL → chunk → 向量 → Milvus
+│       │   ├── import_law.py             # JSON → MySQL 法条导入（可重复运行）
 │       │   └── test_milvus.py            # Milvus 建表/插入/搜索验证
 │       ├── service/                      # 业务逻辑层
 │       │   ├── embedding_service.py      # BGE 文本向量化
@@ -296,6 +304,24 @@ API 文档：http://127.0.0.1:8000/docs
 - 根治：`sysctl -w vm.swappiness=60` 并写入 /etc/sysctl.conf（优先级高于厂商默认配置）
 - 认知：加 Swap 只是装了备胎，swappiness 才是决定用不用的开关；内存紧张 + swappiness=0 必然 OOM
 - 数字修正：实际诗词数据为 1万+ 首（源数据 10,671 首：唐诗 5,000、宋词 5,000、诗经 305、唐诗三百首 366），此前记录的 15,665 首有误；向量库实测 67,591 条，无误
+
+### 2026-09-13 商标法条数据层：法条版本表 + 条款表 + 可重复导入
+
+- 新增两张表：`law_version`（法律名称 / 版本名称 / 施行日期 / 失效日期）与 `law_clause`（条款号 / 条款原文 / 风险等级），一对多
+- **为什么版本要单独一张表**：《商标法》已于 2026-06-26 全面修订通过、自 2027-01-01 施行，禁止性标志条款从第十条整体移到第十五条。生效日期是「版本」的属性而不是「条款」的属性；拆表之后，2027-01-01 那天代码按日期装配提示词即可自动切换，不用改一行代码
+- 两张表都加了联合唯一约束：`law_name + version_name`、`version_id + clause_number`。**条款号必须和版本一起唯一**——新旧两版都有「第十条」，单独唯一会撞号
+- 法条原文外置为 JSON（`data/law/商标法-2019修正版.json`），逐字复制自国家知识产权局官网，共 15 条：第十条第一款引导语 + 8 项 + 第二款，第十一条第一款引导语 + 3 项 + 第二款
+- 导入脚本 `script/import_law.py` 可重复运行：已存在的版本跳过，不会插重
+- 日期在脚本里显式转成 `date` 对象再交给 ORM，不直接塞字符串；`expiry_date` 为 `null` 表示「现行版本，尚无失效日期」
+
+### 2026-09-14 品牌取名版的输出结构：两套 schema + 跨字段校验
+
+- `schemas/agent.py` 新增 6 个类，分两组：**模型产出的**（`ModelOutput` / `CandidateFromModel` / `RiskFromModel`）与**接口返回的**（`AgentSchema` / `Candidate` / `RiskDetail`）
+- **为什么分两组**：模型只输出条款的数据库主键 `clause_id` 和命中理由；条款号、条款原文、风险等级、法条版本全部由代码拿 id 回表查出来再拼上。模型不经手原文，就没有记错或改写的机会——这比在提示词里写「必须引用原文」可靠，因为提示词是恳求，代码是防线
+- 新增 `intent`（取名 / 合规检查 / 两者都有）与每个候选名的 `origin`（系统生成 / 用户提供），用来区分「模型想出来的名字」和「用户自己拿来问的名字」
+- `meaning`（推荐理由）设为**可空**：用户自己起的名字没有「推荐理由」，设成必填会逼模型编一个
+- 加 `model_validator(mode="after")` 做跨字段校验，把原先只写在字段描述里的约定变成可执行规则：status 与载荷对应、intent 与 origin 对应、系统生成的名字必须有推荐理由。20 个对照用例（7 个合法 + 13 个非法）全部符合预期
+- 旧表单版（人名取名）的 `NameSchema` / `NameResultSchema` 未改动，两条路互不影响
 
 ## 👨‍💻 作者
 
