@@ -1,3 +1,5 @@
+from typing import List
+
 from sqlalchemy import select,exists
 from models import AsyncSession
 from models.forbidden_word import ForbiddenWord,WordKindClause
@@ -30,3 +32,15 @@ class ForbiddenWordRepo:
                       WordKindClause.version_id==version_id))
 
         return await self.session.scalar(stmt)
+
+
+    async def get_all_forbidden_words(self)->List[ForbiddenWord]:
+        stmt = select(ForbiddenWord)
+        result=await self.session.scalars(stmt)
+        return result.all()
+
+
+    async def get_all_wordkindsclause(self,version_id:int)->List[WordKindClause]:
+        stmt = select(WordKindClause).where(WordKindClause.version_id==version_id)
+        result=await self.session.scalars(stmt)
+        return result.all()

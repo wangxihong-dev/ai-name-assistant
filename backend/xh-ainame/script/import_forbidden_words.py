@@ -4,8 +4,9 @@ from models import engine,AsyncSessionFactory
 from repository.forbidden_word_repo import ForbiddenWordRepo
 import asyncio
 from pathlib import Path
-
+from datetime import date
 from repository.law_repository import LawRepo
+from sqlalchemy import select
 
 DATA_DIR=Path(__file__).resolve().parent.parent  /"data"/"forbidden_word"
 files=sorted(DATA_DIR.glob("*.json"))
@@ -81,7 +82,32 @@ async def import_word_kind_clause():
     await engine.dispose()
 
 
+async def verify_forbidden_words():
+    async with AsyncSessionFactory() as session:
+        forbidden_repo=ForbiddenWordRepo(session)
+        law_repo=LawRepo(session)
 
+        today = date.today()
+        version=await law_repo.get_law_version_by_date(today)
+        if not version:
+            raise SystemExit("数据库没有该日期的version对象")
+
+        forbidden_list=await forbidden_repo.get_all_forbidden_words()
+
+        word_kind_clause_list=await forbidden_repo.get_all_wordkindsclause(version_id=version.id)
+        kinds_a={w.word_kind for w in forbidden_list}
+        kinds_b={w.word_kind for w in word_kind_clause_list}
+
+        missing = kinds_a - kinds_b
+        if missing:
+            raise SystemExit(f"以下类别在映射表里没有对应行：{[repr(k) for k in sorted(missing)]}")
+        print(f"校验通过：{len(kinds_a)} 个类别全部有映射")
+        print(f"生效时间:{version.enforcement_date} 失效时间:{version.expiry_date}  今日时间:{date.today()}")
+
+
+
+    await engine.dispose()
 
 asyncio.run(import_word_kind_clause())
 asyncio.run(import_forbidden_words())
+asyncio.run(verify_forbidden_words())
