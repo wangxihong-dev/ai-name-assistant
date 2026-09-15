@@ -20,3 +20,13 @@ class LawRepo:
     async def law_is_exist(self,law_name:str,version_name:str)->bool:
         stmt= select(exists().where(LawVersion.law_name==law_name ,LawVersion.version_name==version_name))
         return await self.session.scalar(stmt)
+
+    async def get_law_clause(self,version_id:int,clause_number:str)->LawClause:
+        stmt = select(LawClause).where(LawClause.version_id==version_id,
+                                       LawClause.clause_number==clause_number)
+        return await self.session.scalar(stmt)
+
+    async def get_law_version(self,version_name:str,law_name:str)->LawVersion:
+        stmt = select(LawVersion).where(LawVersion.version_name==version_name,
+                                        LawVersion.law_name==law_name)
+        return await self.session.scalar(stmt)

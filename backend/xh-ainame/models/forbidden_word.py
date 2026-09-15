@@ -22,7 +22,6 @@ class WordKindClause(Base):
     __tablename__ = 'word_kind_clause'
     id :Mapped[int]=mapped_column(Integer,primary_key=True,autoincrement=True)
     word_kind:WordKind=mapped_column(String(30),nullable=False)
-
     version_id:Mapped[int]=mapped_column(Integer,ForeignKey("law_version.id"),nullable=False)
     clause_id:Mapped[int]=mapped_column(Integer,ForeignKey("law_clause.id"),nullable=False)
 
