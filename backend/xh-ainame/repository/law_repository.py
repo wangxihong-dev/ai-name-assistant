@@ -26,7 +26,7 @@ class LawRepo:
                                        LawClause.clause_number==clause_number)
         return await self.session.scalar(stmt)
 
-    async def get_law_version(self,version_name:str,law_name:str)->LawVersion:
+    async def get_law_version(self,version_name:str,law_name:str)->LawVersion|None:
         stmt = select(LawVersion).where(LawVersion.version_name==version_name,
                                         LawVersion.law_name==law_name)
         return await self.session.scalar(stmt)
@@ -40,3 +40,7 @@ class LawRepo:
         if len(rows) != 1:
             raise SystemExit(f"当前生效版本应恰好 1 个，实际 {len(rows)} 个")
         return rows[0]
+
+    async def get_law_clause_by_id(self,id:int)->LawClause|None:
+        stmt = select(LawClause).where(LawClause.id == id)
+        return await self.session.scalar(stmt)

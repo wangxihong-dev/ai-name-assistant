@@ -44,3 +44,9 @@ class ForbiddenWordRepo:
         stmt = select(WordKindClause).where(WordKindClause.version_id==version_id)
         result=await self.session.scalars(stmt)
         return result.all()
+
+
+    async def get_wordkindclause_by_id_kind(self,version_id:int,word_kind:str)->WordKindClause|None:
+        stmt = select(WordKindClause).where(WordKindClause.version_id==version_id,WordKindClause.word_kind == word_kind)
+        result = await self.session.scalar(stmt)
+        return result

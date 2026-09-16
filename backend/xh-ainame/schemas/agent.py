@@ -87,7 +87,7 @@ class RiskDetail(BaseModel):
     law_version_name: Annotated[str, Field(...,
         description="法条版本，代码回 law_version 表取，例如 2019修正版。"
                     "这一格是诚信线的落地点：界面和简历口径都要能说出依据的是哪一版")]
-    reason: Annotated[str, Field(..., description="命中理由，模型产出，代码原样透传，不改写")]
+    reason: Annotated[str, Field(..., description="模型产出或代码按模板拼，视风险来源而定")]
 
 
 class Candidate(BaseModel):
