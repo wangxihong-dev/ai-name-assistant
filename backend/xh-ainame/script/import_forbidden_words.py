@@ -6,7 +6,6 @@ import asyncio
 from pathlib import Path
 from datetime import date
 from repository.law_repository import LawRepo
-from sqlalchemy import select
 
 DATA_DIR=Path(__file__).resolve().parent.parent  /"data"/"forbidden_word"
 files=sorted(DATA_DIR.glob("*.json"))
