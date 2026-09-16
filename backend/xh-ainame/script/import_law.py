@@ -41,14 +41,16 @@ async def import_law_clause():
                     ))
                 else:
                     print("已存在，跳过")
-                    for i,item in enumerate(law_dict["clauses"],1):
-                        await law_repo.insert_law_clause(LawClause(
-                            version_id=version.id,
-                            clause_number=item["clause_number"],
-                            clause_original=item["clause_original"],
-                            risk_grade=item["risk_grade"],
-                        ))
-                        count += 1
+                    version=await law_repo.get_law_version(law_dict["law_name"],law_dict["version_name"])
+
+                for i,item in enumerate(law_dict["clauses"],1):
+                    await law_repo.insert_law_clause(LawClause(
+                        version_id=version.id,
+                        clause_number=item["clause_number"],
+                        clause_original=item["clause_original"],
+                        risk_grade=item["risk_grade"],
+                    ))
+                    count += 1
 
         print(f"条款 {count} 条，已提交")
 
