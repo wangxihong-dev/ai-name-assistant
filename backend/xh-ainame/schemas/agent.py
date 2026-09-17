@@ -78,16 +78,32 @@ class ModelOutput(BaseModel):
 # 代码把 ModelOutput、自己测的耗时和调用次数、以及回表查到的法条信息，
 # 拼成 AgentSchema 返回给前端。前端只认这一个结构。
 # ══════════════════════════════════════════════════════════════════
+class RiskReason(BaseModel):
+    """一条命中理由。
+    同一条款可能被规则扫中一次、又被模型判中一次，所以它是列表里的一项，
+    不是 RiskDetail 上的一格：来源属于『每一条理由』，不属于『整张条目』。"""
+
+    judged_by: Annotated[Literal["系统扫描", "AI判断"], Field(...,
+                                description="这条理由是谁产出的。系统扫描＝代码在禁用字样名录里命中的，"
+                                            "理由由代码按模板拼，可复核；AI判断＝AI模型自己读法条判的，"
+                                            "文字不可控，界面必须让用户看出这是 AI的判断、不是法律结论")]
+    text: Annotated[str, Field(...,
+                               description="理由正文。系统扫描那侧是模板句「名字中包含『X』，属于Y」；"
+                                           "AI模型是AI模型写的事实依据")]
+
+
 class RiskDetail(BaseModel):
     clause_number: Annotated[str, Field(..., description="条款号，代码回 law_clause 表取。给人看的")]
     clause_original: Annotated[str, Field(..., description="条款原文，代码回 law_clause 表取。模型碰不到这一格")]
     risk_grade: Annotated[Literal["禁止使用","不予注册","例外规定"], Field(...,
-        description="法律后果，代码回 law_clause 表取")]
+                                                                   description="法律后果，代码回 law_clause 表取")]
     law_name: Annotated[str, Field(..., description="法律名称，代码回 law_version 表取，例如 商标法")]
     law_version_name: Annotated[str, Field(...,
-        description="法条版本，代码回 law_version 表取，例如 2019修正版。"
-                    "这一格是诚信线的落地点：界面和简历口径都要能说出依据的是哪一版")]
-    reason: Annotated[str, Field(..., description="模型产出或代码按模板拼，视风险来源而定")]
+                                   description="法条版本，代码回 law_version 表取，例如 2019修正版。"
+                                               "这一格是诚信线的落地点：界面和简历口径都要能说出依据的是哪一版")]
+    reasons: Annotated[List[RiskReason], Field(...,
+                                   description="这一条条款被命中的全部理由。同一条款被系统扫描和AI判断同时判中时这里就是两条，"
+                                               "但条款原文只出现一次。有条目就至少有一条理由，空列表没有业务含义")]
 
 
 class Candidate(BaseModel):
