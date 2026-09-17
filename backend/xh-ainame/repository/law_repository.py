@@ -47,6 +47,6 @@ class LawRepo:
         stmt = select(LawClause).where(LawClause.id == id)
         return await self.session.scalar(stmt)
 
-    async def get_clauses_by_version(self, version_id: int) -> list[LawClause]:
+    async def get_all_clauses_by_version(self, version_id: int) -> list[LawClause]:
         stmt = select(LawClause).where(LawClause.version_id == version_id).order_by(LawClause.id)
         return list((await self.session.scalars(stmt)).all())

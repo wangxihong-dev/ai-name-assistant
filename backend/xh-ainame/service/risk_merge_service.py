@@ -40,7 +40,7 @@ class RiskMergeService:
                     raise TrademarkDataError(
                         f"law_clause 表里没有 id={clause_id} 的条款，"
                         f"但名录映射指向了它（候选名『{candidate_name}』）")
-                valid = [c.id for c in await self.law_repo.get_clauses_by_version(version.id)]
+                valid = [c.id for c in await self.law_repo.get_all_clauses_by_version(version.id)]
                 raise ClauseIdHallucinatedError(candidate_name, clause_id, valid)
 
             details.append(RiskDetail(
