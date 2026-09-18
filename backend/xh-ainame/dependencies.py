@@ -5,6 +5,7 @@ from models import AsyncSessionFactory
 from service.name_service import NameService
 from fastapi import Depends
 from service.favorite_service import FavoritesService
+from service.chat_service import ChatService
 
 
 async def get_mail() -> FastMail:
@@ -24,3 +25,7 @@ async def get_name_service(session:AsyncSession=Depends(get_session)) -> NameSer
 
 async def get_favorite_service(session:AsyncSession=Depends(get_session)) -> FavoritesService:
     return FavoritesService(session=session)
+
+
+async def get_chat_service(session: AsyncSession = Depends(get_session)) -> ChatService:
+    return ChatService(session=session)

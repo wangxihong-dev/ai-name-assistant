@@ -13,3 +13,8 @@ class ClauseIdHallucinatedError(Exception):
         super().__init__(
             f"候选名『{candidate_name}』：模型给的 clause_id={bad_clause_id} 不在当前版本里，"
             f"可选的是 {valid_ids}")
+
+
+class ConversationError(Exception):
+    """会话数据形状不对：出现了不该落库的 system 消息、tool 消息缺 tool_call_id、
+    或者前端传来的会话 id 库里没有。属于程序 bug 或数据故障，不是业务结果。"""
