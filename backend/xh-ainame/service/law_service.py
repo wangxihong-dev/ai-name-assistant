@@ -4,7 +4,7 @@ from models.law_version import LawVersion
 from errors import TrademarkDataError
 
 
-class LawService():
+class LawService:
     def __init__(self,session:AsyncSession):
         self.law_repo = LawRepo(session)
 

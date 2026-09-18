@@ -4,7 +4,6 @@ from models.law_version import LawVersion
 from models import AsyncSession
 import asyncio
 from models import AsyncSessionFactory
-from datetime import date
 from errors import TrademarkDataError
 
 class TrademarkService:
@@ -25,13 +24,10 @@ class TrademarkService:
 
 
 
-    async def scan_name(self, name: str) -> tuple[list[tuple[int, str]], LawVersion]:
-        today = date.today()
-        version = await self.law_repo.get_law_version_by_date(today)
-
+    async def scan_name(self, name: str, version: LawVersion) -> list[tuple[int, str]]:
         longest = await self.get_longest(name)
         if not longest:
-            return [], version
+            return []
 
         hits: list[tuple[int, str]] = []
         for kind, word in longest.items():
@@ -43,7 +39,7 @@ class TrademarkService:
 
             hits.append((wordkindclause.clause_id, f"名字中包含『{word}』，属于{kind}"))
 
-        return hits, version
+        return hits
 
 
 
