@@ -39,7 +39,11 @@ RUN sed -i 's#const BASE_URL = "http://127.0.0.1:8000"#const BASE_URL = ""#' /ap
 
 # ---------- 运行阶段 ----------
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# 不放成 default.conf：nginx 官方入口脚本 10-listen-on-ipv6-by-default.sh
+# 只在 default.conf 存在时才跑，而且它在处理被替换过的 default.conf 时会卡住。
+# 换成自己的文件名再把官方那个删掉，入口脚本就直接跳过，ipv6 监听自己在配置里写。
+COPY nginx.conf /etc/nginx/conf.d/app.conf
+RUN rm -f /etc/nginx/conf.d/default.conf
 
 # 门户（根路径）
 COPY portal/index.html /usr/share/nginx/html/index.html
