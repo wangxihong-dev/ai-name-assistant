@@ -132,13 +132,17 @@
 
 ## 📷 项目截图
 
-| 登录页 | 注册页 |
-|--------|--------|
-| ![登录页](docs/screenshots/login.png) | ![注册页](docs/screenshots/register.png) |
-
-| 取名页 | 我的收藏 |
+| 门户 | 功能选择 |
 |--------|----------|
-| ![取名页](docs/screenshots/name-input.png) | ![我的收藏](docs/screenshots/favorite.png) |
+| ![门户](docs/screenshots/portal.png) | ![功能选择](docs/screenshots/select.png) |
+
+| 登录页 | 品牌取名（对话版） |
+|--------|--------------------|
+| ![登录页](docs/screenshots/login.png) | ![品牌取名](docs/screenshots/chat.png) |
+
+| 宝宝取名 | 技术博客 |
+|----------|----------|
+| ![宝宝取名](docs/screenshots/name-input.png) | ![技术博客](docs/screenshots/blog.png) |
 
 
 ## 📂 项目结构
