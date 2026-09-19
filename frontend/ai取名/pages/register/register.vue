@@ -1,89 +1,74 @@
 <template>
 	<view class="page">
-		<view class="blob blob-a"></view>
-		<view class="blob blob-b"></view>
-
-		<!-- 顶部 -->
-		<view class="header anim-fade-up">
-			<text class="logo">✨ 鸿运取名</text>
-			<text class="sub">为宝宝寻找一个美好的名字</text>
-		</view>
-
-		<!-- 注册卡片 -->
-		<view class="card anim-fade-up" :style="{ animationDelay: '80ms' }">
-			<text class="card-title">创建账号</text>
-
-			<view class="field">
-				<text class="label">邮箱</text>
-				<view class="input-wrap">
-					<text class="input-icon">✉</text>
-					<input v-model="form.email" class="input" placeholder="请输入您的邮箱" placeholder-class="ph" />
-				</view>
+		<view class="wrap">
+			<view class="brand">
+				<view class="mark"><text class="mark-text">名</text></view>
+				<text class="title">创建账号</text>
+				<text class="sub">注册完就能用两个功能</text>
 			</view>
 
-			<view class="field">
-				<text class="label">验证码</text>
-				<view class="code-box">
-					<view class="input-wrap code-input-wrap">
-						<text class="input-icon">✎</text>
-						<input v-model="form.code" class="input" placeholder="邮箱验证码" placeholder-class="ph" />
+			<view class="card">
+				<view class="field">
+					<text class="label">邮箱</text>
+					<input v-model="form.email" class="input" placeholder="you@example.com" placeholder-class="ph" />
+				</view>
+
+				<view class="field">
+					<text class="label">验证码</text>
+					<view class="code-box">
+						<input v-model="form.code" class="input code-input" placeholder="6 位验证码" placeholder-class="ph" />
+						<button
+							class="code-btn"
+							:class="{ counting: countDown > 0 }"
+							:disabled="countDown > 0 || sending"
+							@click="sendCode"
+						>
+							{{ sending ? '发送中' : countDown > 0 ? countDown + 's' : '获取验证码' }}
+						</button>
 					</view>
-					<button
-						class="code-btn"
-						:class="{ counting: countDown > 0 }"
-						:disabled="countDown > 0 || sending"
-						@click="sendCode"
-					>
-						{{ sending ? '发送中...' : countDown > 0 ? countDown + 's' : '获取验证码' }}
-					</button>
 				</view>
-			</view>
 
-			<view class="field">
-				<text class="label">昵称</text>
-				<view class="input-wrap">
-					<text class="input-icon">👤</text>
-					<input v-model="form.username" class="input" placeholder="请输入昵称" placeholder-class="ph" />
+				<view class="field">
+					<text class="label">昵称</text>
+					<input v-model="form.username" class="input" placeholder="怎么称呼你" placeholder-class="ph" />
 				</view>
-			</view>
 
-			<view class="field">
-				<text class="label">密码</text>
-				<view class="input-wrap">
-					<text class="input-icon">🔒</text>
+				<view class="field">
+					<view class="label-row">
+						<text class="label">密码</text>
+						<text class="toggle" @click="showPwd = !showPwd">{{ showPwd ? '隐藏' : '显示' }}</text>
+					</view>
 					<input
 						v-model="form.password"
 						class="input"
 						:password="!showPwd"
-						placeholder="设置密码（至少 6 位）"
+						placeholder="至少 6 位"
 						placeholder-class="ph"
 					/>
-					<text class="eye" @click="showPwd = !showPwd">{{ showPwd ? '🙈' : '👁' }}</text>
 				</view>
-			</view>
 
-			<view class="field">
-				<text class="label">确认密码</text>
-				<view class="input-wrap">
-					<text class="input-icon">🔒</text>
+				<view class="field">
+					<view class="label-row">
+						<text class="label">确认密码</text>
+						<text class="toggle" @click="showPwd2 = !showPwd2">{{ showPwd2 ? '隐藏' : '显示' }}</text>
+					</view>
 					<input
 						v-model="form.confirm_password"
 						class="input"
 						:password="!showPwd2"
-						placeholder="再次输入密码"
+						placeholder="再输一次"
 						placeholder-class="ph"
 					/>
-					<text class="eye" @click="showPwd2 = !showPwd2">{{ showPwd2 ? '🙈' : '👁' }}</text>
 				</view>
-			</view>
 
-			<button class="main-btn" :disabled="registering" @click="register">
-				<view v-if="registering" class="spinner"></view>
-				<text>{{ registering ? '正在注册...' : '注册账号' }}</text>
-			</button>
+				<button class="btn" :disabled="registering" @click="register">
+					<view v-if="registering" class="spinner"></view>
+					<text>{{ registering ? '注册中' : '注册' }}</text>
+				</button>
 
-			<view class="to-login" @click="goLogin">
-				已有账号？<text class="link">返回登录</text>
+				<view class="to-login" @click="goLogin">
+					已有账号？<text class="link">返回登录</text>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -187,194 +172,56 @@ onUnmounted(() => {
 </script>
 
 <style>
-.page {
-	min-height: 100vh;
-	background: linear-gradient(180deg, #FFF4E0 0%, #FAF4EA 55%);
-	padding: 90rpx 40rpx 70rpx;
-	position: relative;
-	overflow: hidden;
-}
+.page { min-height: 100vh; background: #F5F6F8; }
+.wrap { max-width: 720rpx; margin: 0 auto; padding: 80rpx 40rpx 60rpx; }
 
-.blob {
-	position: absolute;
-	border-radius: 50%;
-	opacity: 0.5;
-	pointer-events: none;
+.brand { text-align: center; margin-bottom: 48rpx; }
+.mark {
+	width: 88rpx; height: 88rpx; margin: 0 auto 22rpx;
+	border-radius: 22rpx; background: #2E7D7B;
+	display: flex; align-items: center; justify-content: center;
 }
+.mark-text { color: #fff; font-size: 40rpx; font-weight: 600; }
+.title { display: block; font-size: 40rpx; font-weight: 600; color: #16181C; }
+.sub { display: block; margin-top: 12rpx; font-size: 25rpx; color: #9AA2AC; }
 
-.blob-a {
-	width: 300rpx;
-	height: 300rpx;
-	top: -80rpx;
-	left: -80rpx;
-	background: radial-gradient(circle, rgba(232, 185, 107, 0.5), rgba(232, 185, 107, 0));
-	animation: float 6s ease-in-out infinite;
-}
+.card { background: #fff; border: 2rpx solid #E6E8EB; border-radius: 24rpx; padding: 44rpx 40rpx; }
 
-.blob-b {
-	width: 240rpx;
-	height: 240rpx;
-	right: -80rpx;
-	top: 46%;
-	background: radial-gradient(circle, rgba(217, 140, 122, 0.38), rgba(217, 140, 122, 0));
-	animation: float 7s ease-in-out infinite reverse;
-}
-
-.header {
-	text-align: center;
-	margin-bottom: 54rpx;
-	position: relative;
-}
-
-.logo {
-	display: block;
-	font-size: 50rpx;
-	font-weight: bold;
-	background: linear-gradient(135deg, #9B6B3C, #C58B4B);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
-}
-
-.sub {
-	display: block;
-	color: #B9A48E;
-	margin-top: 18rpx;
-	font-size: 26rpx;
-}
-
-.card {
-	background: rgba(255, 255, 255, 0.92);
-	border-radius: 40rpx;
-	padding: 50rpx 44rpx;
-	box-shadow: 0 20rpx 60rpx rgba(154, 107, 60, 0.14);
-	border: 2rpx solid rgba(232, 185, 107, 0.18);
-	position: relative;
-}
-
-.card-title {
-	display: block;
-	font-size: 38rpx;
-	font-weight: bold;
-	color: #4A3728;
-	margin-bottom: 40rpx;
-}
-
-.field {
-	margin-bottom: 32rpx;
-}
-
-.label {
-	display: block;
-	color: #8C735C;
-	margin-bottom: 14rpx;
-	font-size: 26rpx;
-	font-weight: bold;
-}
-
-.input-wrap {
-	display: flex;
-	align-items: center;
-	height: 94rpx;
-	background: #FFF9F0;
-	border-radius: 24rpx;
-	padding: 0 26rpx;
-	border: 2rpx solid #F0E6D6;
-}
-
-.input-icon {
-	font-size: 28rpx;
-	margin-right: 16rpx;
-}
+.field { margin-bottom: 30rpx; }
+.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14rpx; }
+.label { display: block; font-size: 26rpx; color: #626A75; margin-bottom: 14rpx; }
+.label-row .label { margin-bottom: 0; }
+.toggle { font-size: 24rpx; color: #2E7D7B; }
 
 .input {
-	flex: 1;
-	height: 94rpx;
-	font-size: 29rpx;
-	color: #4A3728;
+	height: 88rpx; background: #F5F6F8; border: 2rpx solid #E6E8EB;
+	border-radius: 16rpx; padding: 0 26rpx; font-size: 29rpx; color: #16181C;
 }
+.ph { color: #B4BAC2; }
 
-.ph {
-	color: #C9BBA4;
-}
-
-.eye {
-	font-size: 30rpx;
-	padding-left: 16rpx;
-}
-
-.code-box {
-	display: flex;
-	align-items: stretch;
-	gap: 18rpx;
-}
-
-.code-input-wrap {
-	flex: 1;
-}
-
+.code-box { display: flex; align-items: center; gap: 16rpx; }
+.code-input { flex: 1; }
 .code-btn {
-	flex-shrink: 0;
-	margin: 0;
-	width: 220rpx;
-	height: 94rpx;
-	line-height: 94rpx;
-	font-size: 25rpx;
-	color: #9B6B3C;
-	background: #FBF0DE;
-	border-radius: 24rpx;
-	border: 2rpx solid #F0E6D6;
-	transition: all 0.25s;
+	width: 220rpx; height: 88rpx; line-height: 88rpx; flex-shrink: 0;
+	background: #E7F2F1; color: #2E7D7B; font-size: 25rpx;
+	border-radius: 16rpx; padding: 0;
 }
+.code-btn[disabled] { opacity: .5; }
+.code-btn.counting { background: #F0F1F3; color: #9AA2AC; }
 
-.code-btn.counting {
-	background: #F6E3C8;
-	color: #B9A48E;
-	animation: pulse 1s ease-in-out infinite;
-}
-
-.code-btn[disabled] {
-	opacity: 1;
-}
-
-.main-btn {
-	margin-top: 20rpx;
-	height: 100rpx;
-	line-height: 100rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 16rpx;
-	background: linear-gradient(135deg, #E8B96B, #C58B4B);
-	color: #fff;
-	font-size: 32rpx;
-	font-weight: bold;
+.btn {
+	margin-top: 10rpx; height: 92rpx; line-height: 92rpx;
+	display: flex; align-items: center; justify-content: center; gap: 14rpx;
+	background: #2E7D7B; color: #fff; font-size: 30rpx; font-weight: 500;
 	border-radius: 999rpx;
-	box-shadow: 0 16rpx 32rpx rgba(197, 139, 75, 0.35);
 }
-
-.main-btn[disabled] {
-	opacity: 0.75;
-}
-
+.btn[disabled] { opacity: .55; }
 .spinner {
-	width: 30rpx;
-	height: 30rpx;
-	border: 4rpx solid rgba(255, 255, 255, 0.4);
-	border-top-color: #fff;
-	border-radius: 50%;
-	animation: spin 0.8s linear infinite;
+	width: 28rpx; height: 28rpx; border: 4rpx solid rgba(255,255,255,.35);
+	border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.to-login {
-	text-align: center;
-	margin-top: 36rpx;
-	color: #B9A48E;
-	font-size: 26rpx;
-}
-
-.link {
-	color: #C58B4B;
-	font-weight: bold;
-}
+.to-login { text-align: center; margin-top: 32rpx; font-size: 26rpx; color: #9AA2AC; }
+.link { color: #2E7D7B; }
 </style>

@@ -1,41 +1,30 @@
 <template>
 	<view class="page">
-		<!-- 装饰光斑 -->
-		<view class="blob blob-a"></view>
-		<view class="blob blob-b"></view>
-
-		<!-- 顶部品牌区 -->
-		<view class="header anim-fade-up">
-			<view class="logo-wrap">
-				<view class="logo-orb">✨</view>
+		<view class="wrap">
+			<!-- 品牌区：一个 CSS 画的方形标记，不用 emoji -->
+			<view class="brand">
+				<view class="mark"><text class="mark-text">名</text></view>
+				<text class="title">鸿运取名</text>
+				<text class="sub">登录后即可使用宝宝取名与品牌取名</text>
 			</view>
-			<text class="logo">鸿运取名</text>
-			<text class="desc">AI 国学智能命名助手</text>
-			<text class="wish">愿每一个名字，都承载父母的祝福</text>
-		</view>
 
-		<!-- 登录卡片 -->
-		<view class="card anim-fade-up" :style="{ animationDelay: '80ms' }">
-			<text class="card-title">欢迎回来</text>
-
-			<view class="field">
-				<text class="label">邮箱</text>
-				<view class="input-wrap">
-					<text class="input-icon">✉</text>
+			<view class="card">
+				<view class="field">
+					<text class="label">邮箱</text>
 					<input
 						v-model="form.email"
 						class="input"
 						type="text"
-						placeholder="请输入邮箱"
+						placeholder="you@example.com"
 						placeholder-class="ph"
 					/>
 				</view>
-			</view>
 
-			<view class="field">
-				<text class="label">密码</text>
-				<view class="input-wrap">
-					<text class="input-icon">🔒</text>
+				<view class="field">
+					<view class="label-row">
+						<text class="label">密码</text>
+						<text class="toggle" @click="showPwd = !showPwd">{{ showPwd ? '隐藏' : '显示' }}</text>
+					</view>
 					<input
 						v-model="form.password"
 						class="input"
@@ -43,21 +32,22 @@
 						placeholder="请输入密码"
 						placeholder-class="ph"
 					/>
-					<text class="eye" @click="showPwd = !showPwd">{{ showPwd ? '🙈' : '👁' }}</text>
+				</view>
+
+				<button class="btn" :disabled="loading" @click="login">
+					<view v-if="loading" class="spinner"></view>
+					<text>{{ loading ? '登录中' : '登录' }}</text>
+				</button>
+
+				<view class="to-register" @click="goRegister">
+					还没有账号？<text class="link">注册一个</text>
 				</view>
 			</view>
 
-			<button class="login-btn" :disabled="loading" @click="login">
-				<view v-if="loading" class="spinner"></view>
-				<text>{{ loading ? '正在登录...' : '开始探索名字' }}</text>
-			</button>
-
-			<view class="register" @click="goRegister">
-				还没有账号？<text class="link">立即注册</text>
+			<view class="foot">
+				<text class="foot-link" @click="goPortal">← 返回门户</text>
 			</view>
 		</view>
-
-		<text class="footer-note">诗经 · 楚辞 · 唐诗宋词</text>
 	</view>
 </template>
 
@@ -86,7 +76,7 @@ const login = async () => {
 			uni.setStorageSync("token", data.tokens)
 			uni.showToast({ title: "登录成功", icon: "success" })
 			setTimeout(() => {
-				uni.reLaunch({ url: "/pages/name/name" })
+				uni.reLaunch({ url: "/pages/select/select" })
 			}, 700)
 		} else {
 			uni.showToast({ title: "登录失败，请检查邮箱和密码", icon: "none" })
@@ -101,204 +91,62 @@ const login = async () => {
 const goRegister = () => {
 	uni.navigateTo({ url: "/pages/register/register" })
 }
+
+// 门户是 nginx 直接托管的静态页，不在 uni-app 的路由里，所以只能整页跳
+const goPortal = () => {
+	// #ifdef H5
+	window.location.href = "/"
+	// #endif
+	// #ifndef H5
+	uni.showToast({ title: "请在浏览器里访问站点根路径", icon: "none" })
+	// #endif
+}
 </script>
 
 <style>
-.page {
-	min-height: 100vh;
-	background: linear-gradient(180deg, #FFF4E0 0%, #FAF4EA 60%);
-	padding: 120rpx 40rpx 60rpx;
-	position: relative;
-	overflow: hidden;
-}
+.page { min-height: 100vh; background: #F5F6F8; }
+.wrap { max-width: 720rpx; margin: 0 auto; padding: 130rpx 40rpx 60rpx; }
 
-/* 装饰光斑 */
-.blob {
-	position: absolute;
-	border-radius: 50%;
-	filter: blur(4rpx);
-	opacity: 0.55;
-	pointer-events: none;
+.brand { text-align: center; margin-bottom: 64rpx; }
+.mark {
+	width: 96rpx; height: 96rpx; margin: 0 auto 26rpx;
+	border-radius: 24rpx; background: #2E7D7B;
+	display: flex; align-items: center; justify-content: center;
 }
+.mark-text { color: #fff; font-size: 44rpx; font-weight: 600; }
+.title { display: block; font-size: 44rpx; font-weight: 600; color: #16181C; letter-spacing: 2rpx; }
+.sub { display: block; margin-top: 14rpx; font-size: 26rpx; color: #9AA2AC; }
 
-.blob-a {
-	width: 320rpx;
-	height: 320rpx;
-	top: -90rpx;
-	right: -80rpx;
-	background: radial-gradient(circle, rgba(232, 185, 107, 0.55), rgba(232, 185, 107, 0));
-	animation: float 6s ease-in-out infinite;
-}
+.card { background: #fff; border: 2rpx solid #E6E8EB; border-radius: 24rpx; padding: 48rpx 40rpx; }
 
-.blob-b {
-	width: 260rpx;
-	height: 260rpx;
-	left: -90rpx;
-	top: 42%;
-	background: radial-gradient(circle, rgba(217, 140, 122, 0.4), rgba(217, 140, 122, 0));
-	animation: float 7s ease-in-out infinite reverse;
-}
-
-.header {
-	text-align: center;
-	margin-bottom: 70rpx;
-	position: relative;
-}
-
-.logo-wrap {
-	display: flex;
-	justify-content: center;
-	margin-bottom: 22rpx;
-}
-
-.logo-orb {
-	width: 120rpx;
-	height: 120rpx;
-	border-radius: 50%;
-	background: linear-gradient(135deg, #E8B96B, #C58B4B);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 56rpx;
-	box-shadow: 0 18rpx 40rpx rgba(197, 139, 75, 0.4);
-	animation: float 4s ease-in-out infinite;
-}
-
-.logo {
-	display: block;
-	font-size: 58rpx;
-	font-weight: bold;
-	background: linear-gradient(135deg, #9B6B3C, #C58B4B);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
-}
-
-.desc {
-	display: block;
-	font-size: 30rpx;
-	color: #8C735C;
-	margin-top: 18rpx;
-	letter-spacing: 4rpx;
-}
-
-.wish {
-	display: block;
-	margin-top: 34rpx;
-	color: #B9A48E;
-	font-size: 26rpx;
-	line-height: 44rpx;
-}
-
-/* 卡片 */
-.card {
-	background: rgba(255, 255, 255, 0.9);
-	border-radius: 40rpx;
-	padding: 56rpx 44rpx;
-	box-shadow: 0 20rpx 60rpx rgba(154, 107, 60, 0.14);
-	border: 2rpx solid rgba(232, 185, 107, 0.18);
-	position: relative;
-}
-
-.card-title {
-	display: block;
-	font-size: 38rpx;
-	font-weight: bold;
-	color: #4A3728;
-	margin-bottom: 44rpx;
-}
-
-.field {
-	margin-bottom: 36rpx;
-}
-
-.label {
-	display: block;
-	color: #8C735C;
-	margin-bottom: 14rpx;
-	font-size: 26rpx;
-	font-weight: bold;
-}
-
-.input-wrap {
-	display: flex;
-	align-items: center;
-	height: 96rpx;
-	background: #FFF9F0;
-	border-radius: 24rpx;
-	padding: 0 26rpx;
-	border: 2rpx solid #F0E6D6;
-	transition: border-color 0.25s;
-}
-
-.input-icon {
-	font-size: 28rpx;
-	margin-right: 16rpx;
-}
+.field { margin-bottom: 34rpx; }
+.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14rpx; }
+.label { display: block; font-size: 26rpx; color: #626A75; margin-bottom: 14rpx; }
+.label-row .label { margin-bottom: 0; }
+.toggle { font-size: 24rpx; color: #2E7D7B; }
 
 .input {
-	flex: 1;
-	height: 96rpx;
-	font-size: 30rpx;
-	color: #4A3728;
+	height: 92rpx; background: #F5F6F8; border: 2rpx solid #E6E8EB;
+	border-radius: 16rpx; padding: 0 26rpx; font-size: 29rpx; color: #16181C;
 }
+.ph { color: #B4BAC2; }
 
-.ph {
-	color: #C9BBA4;
-}
-
-.eye {
-	font-size: 30rpx;
-	padding-left: 16rpx;
-}
-
-.login-btn {
-	margin-top: 16rpx;
-	height: 100rpx;
-	line-height: 100rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 16rpx;
-	background: linear-gradient(135deg, #E8B96B, #C58B4B);
-	color: #fff;
-	font-size: 32rpx;
-	font-weight: bold;
+.btn {
+	margin-top: 12rpx; height: 92rpx; line-height: 92rpx;
+	display: flex; align-items: center; justify-content: center; gap: 14rpx;
+	background: #2E7D7B; color: #fff; font-size: 30rpx; font-weight: 500;
 	border-radius: 999rpx;
-	box-shadow: 0 16rpx 32rpx rgba(197, 139, 75, 0.35);
 }
-
-.login-btn[disabled] {
-	opacity: 0.75;
-}
-
+.btn[disabled] { opacity: .55; }
 .spinner {
-	width: 30rpx;
-	height: 30rpx;
-	border: 4rpx solid rgba(255, 255, 255, 0.4);
-	border-top-color: #fff;
-	border-radius: 50%;
-	animation: spin 0.8s linear infinite;
+	width: 28rpx; height: 28rpx; border: 4rpx solid rgba(255,255,255,.35);
+	border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.register {
-	text-align: center;
-	margin-top: 40rpx;
-	color: #B9A48E;
-	font-size: 26rpx;
-}
+.to-register { text-align: center; margin-top: 34rpx; font-size: 26rpx; color: #9AA2AC; }
+.link { color: #2E7D7B; }
 
-.link {
-	color: #C58B4B;
-	font-weight: bold;
-}
-
-.footer-note {
-	display: block;
-	text-align: center;
-	margin-top: 56rpx;
-	color: #C9BBA4;
-	font-size: 24rpx;
-	letter-spacing: 6rpx;
-}
+.foot { text-align: center; margin-top: 48rpx; }
+.foot-link { font-size: 24rpx; color: #B4BAC2; }
 </style>

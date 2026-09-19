@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>鸿运取名 · 王习鸿</title>
+<!-- 门户页：全部内联，不引任何外部资源，这样它不可能因为静态资源路径出错而白屏 -->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #F2F3F1; padding: 32px 20px; color: #2E2E2C;
+  }
+  main { width: 100%; max-width: 720px; }
+  h1 { font-size: 34px; letter-spacing: 3px; text-align: center; font-weight: 700; }
+  .sub { text-align: center; margin-top: 12px; color: #8B8B85; font-size: 14px; letter-spacing: 1px; }
+  .cards { margin-top: 44px; display: flex; flex-direction: column; gap: 18px; }
+  @media (min-width: 640px) { .cards { flex-direction: row; } }
+  .card {
+    flex: 1; display: block; text-decoration: none; color: inherit;
+    padding: 30px 26px; border-radius: 18px; transition: transform .18s, box-shadow .18s;
+  }
+  .card:hover { transform: translateY(-3px); }
+  .warm { background: linear-gradient(135deg,#FFF7E8,#FDEED7); border: 1px solid rgba(232,185,107,.5); box-shadow: 0 10px 28px rgba(197,139,75,.14); }
+  .cool { background: linear-gradient(135deg,#EDF7F7,#DCEDEF); border: 1px solid rgba(79,163,160,.5); box-shadow: 0 10px 28px rgba(47,111,115,.14); }
+  .icon { font-size: 30px; }
+  .t { display: block; margin-top: 14px; font-size: 21px; font-weight: 700; }
+  .warm .t { color: #8A5F22; }
+  .cool .t { color: #2A5F63; }
+  .d { display: block; margin-top: 10px; font-size: 13.5px; line-height: 22px; color: #7C7770; }
+  footer { margin-top: 40px; text-align: center; font-size: 13px; color: #A6A6A0; }
+  footer a { color: #7C8B8C; text-decoration: none; border-bottom: 1px solid rgba(0,0,0,.12); }
+</style>
+</head>
+<body>
+<main>
+  <h1>鸿运取名</h1>
+  <p class="sub">王习鸿 · 2027 届 · 西安</p>
+
+  <div class="cards">
+    <a class="card warm" href="/app/">
+      <span class="icon">✨</span>
+      <span class="t">开始使用</span>
+      <span class="d">AI 取名助手。宝宝取名走诗经楚辞唐诗宋词；品牌取名是对话式的，每个名字都会过一遍商标法禁用字样，风险带条款出处。</span>
+    </a>
+
+    <a class="card cool" href="/blog/">
+      <span class="icon">📓</span>
+      <span class="t">技术博客</span>
+      <span class="d">这个项目是怎么做的、当时为什么那么选、以及我踩过的坑。都是真事，有日期有报错原文。</span>
+    </a>
+  </div>
+
+  <footer>
+    <a href="https://github.com/wangxihong-dev/ai-name-assistant">GitHub · wangxihong-dev/ai-name-assistant</a>
+  </footer>
+</main>
+</body>
+</html>

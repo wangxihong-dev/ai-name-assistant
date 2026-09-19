@@ -1,7 +1,14 @@
 # =============================================
-# 前端镜像：多阶段构建
+# 前端镜像：门户(/) + 取名应用(/app/) + 技术博客(/blog/) + 反向代理 API
+#
 # 阶段1：node 环境用 uni-app CLI 构建 H5 静态文件
-# 阶段2：nginx 托管静态文件 + 反向代理 API
+# 阶段2：nginx 托管三样静态内容
+#
+# ⚠️ 博客不在这个镜像里构建。VitePress 在仓库的 blog/ 目录，
+#    而本镜像的构建上下文是 frontend/ai取名，看不到 blog/。
+#    所以必须先在本地跑  pwsh blog/stage.ps1  把博客产物拷进 blog-dist/，
+#    否则下面那句 COPY blog-dist/ 会直接让构建失败（这是故意的：宁可构建失败，
+#    不要静默产出一个没有博客的镜像）。
 # =============================================
 FROM node:20-alpine AS build
 WORKDIR /app
@@ -22,6 +29,8 @@ COPY vite.config.js ./
 
 # 生产构建：
 #  1) API 地址改为同源（""），由 Nginx 统一代理，浏览器无需知道后端地址
+#     ⚠️ 这个 sed 是精确字符串匹配。common/api.js 里那一行 BASE_URL 一个字都不能改，
+#        改了 sed 匹配不上、不报错，生产环境就会去连浏览器自己的 127.0.0.1:8000
 #  2) 修正 HBuilderX 模板与 CLI 构建的入口差异
 RUN sed -i 's#const BASE_URL = "http://127.0.0.1:8000"#const BASE_URL = ""#' /app/src/common/api.js \
     && sed -i 's#src="/main.js"#src="/src/main.js"#' /app/index.html \
@@ -31,5 +40,14 @@ RUN sed -i 's#const BASE_URL = "http://127.0.0.1:8000"#const BASE_URL = ""#' /ap
 # ---------- 运行阶段 ----------
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist/build/h5 /usr/share/nginx/html
+
+# 门户（根路径）
+COPY portal/index.html /usr/share/nginx/html/index.html
+
+# 取名应用（/app/）—— base 由 manifest.json 的 h5.router.base 决定
+COPY --from=build /app/dist/build/h5 /usr/share/nginx/html/app
+
+# 技术博客（/blog/）—— 由 blog/stage.ps1 预先构建并拷进 blog-dist/
+COPY blog-dist/ /usr/share/nginx/html/blog/
+
 EXPOSE 80

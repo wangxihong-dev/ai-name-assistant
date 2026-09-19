@@ -25,3 +25,8 @@ docker/milvus/volumes/
 milvus_data/
 # 部署打包临时文件
 deploy-src.tar.gz
+
+# 博客构建产物（由 blog/stage.ps1 生成，部署时才需要）
+blog/node_modules/
+
+
