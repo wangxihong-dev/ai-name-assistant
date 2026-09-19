@@ -84,3 +84,24 @@ class HistoryOut(BaseModel):
     rounds: Annotated[list[RoundOut], Field(..., description="按时间正序的全部轮次")]
     disclaimer: Annotated[str, Field(DISCLAIMER,
         description="免责措辞。给了默认值，所以构造时不填也会有——结构上没法漏")]
+
+
+# ══════════════════════════════════════════════════════════════
+# 流式进度事件
+#
+# 为什么流的是「系统正在做什么」而不是「模型正在说什么」：
+#   ① 最终答案是以「模型调 ModelOutput 这个工具」的形式来的，args 是一整坨
+#      结构化 JSON，逐字吐给用户看没有意义
+#   ② risks 是模型说完之后，代码扫名录、回表、按条款聚合才产生的，
+#      它根本不存在于模型的输出流里
+#   ③ 一次请求有 3~6 次模型调用，前面那些轮（检索诗词）没有任何可流的东西
+#
+# 事件的线上形状（SSE）：
+#   event: stage   data: {"code": "retrieve_poetry", "text": "正在检索诗词素材…"}
+#   event: result  data: {"data": {…ChatResponse…}}
+#   event: error   data: {"text": "…"}
+# code 是封闭选项（前端靠它切换图标／文案），text 是给人看的，
+# 改文案不用前端发版。
+# ══════════════════════════════════════════════════════════════
+
+StageCode = Literal["load_law", "thinking", "retrieve_poetry", "scan_trademark", "retry"]

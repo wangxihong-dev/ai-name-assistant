@@ -3,7 +3,6 @@
 为什么要有这一层：
   本项目的规矩是「router 不写业务逻辑」，router 只做「收 -> 调 -> return」。
   那「开会话 / 取历史 / 跑 agent / 存这一轮」这套编排就得有人做，就是这里。
-  router 里两个接口，各自只调这里的一个方法。
 
 依赖方向（单向，没有环）：
   chat_service ──> conversation_service ──> conversation_repo ──> models
@@ -12,16 +11,27 @@
 注意 chat_agent 不知道 conversation_service 的存在，反过来也是。
 两边只通过「一个消息列表」说话——这就是它们之间唯一的接口。
 """
+import asyncio
 import logging
+from typing import AsyncIterator, Callable, Awaitable
 
 from langchain_core.messages import BaseMessage
 
 from core.chat_agent import AgentRunResult, run_agent
 from models import AsyncSession
-from schemas.conversation import DISCLAIMER, ChatResponse, HistoryOut
+from schemas.conversation import DISCLAIMER, ChatResponse, HistoryOut, StageCode
 from service.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
+
+# 流已经开始（HTTP 200 和响应头都发出去了）之后再出错，状态码就改不了了，
+# 只能把错误当成一个事件发出去。所以这句话必须能独立看懂。
+STREAM_ERROR_TEXT = "这次没能生成结果，请重试一次"
+
+# 队列的收尾哨兵。用一个独一无二的对象，这样它不可能跟任何事件字典撞上。
+_DONE = object()
+
+StageEmitter = Callable[[StageCode, str], Awaitable[None]]
 
 
 class ChatService:
@@ -29,21 +39,84 @@ class ChatService:
         self.session = session
         self.conversation_service = ConversationService(session)
 
+    # ══════════════════════════════════════════════════════
+    # 会话
+    # ══════════════════════════════════════════════════════
+
+    async def open_conversation(self, conversation_id: int | None, user_id: int) -> int:
+        """把「确定会话」单独拎出来。
+
+        流式接口必须在发出响应头之前调它——一旦开始流，状态码就改不了，
+        会话不存在就只能塞进事件里，前端就拿不到 404 了。
+        """
+        async with self.session.begin():
+            return await self.conversation_service.open_or_get(conversation_id, user_id)
+
+    # ══════════════════════════════════════════════════════
+    # 普通接口：一次请求一个完整响应
+    # ══════════════════════════════════════════════════════
+
     async def chat(self, user_input: str, user_id: int,
                    conversation_id: int | None = None) -> ChatResponse:
-        """一次完整的对话请求。
+        cid = await self.open_conversation(conversation_id, user_id)
+        return await self._run_round(user_input, cid, user_id, on_event=None)
 
-        conversation_id 传 None = 开一段新对话；传了 = 接着聊（会核对归属）。
+    # ══════════════════════════════════════════════════════
+    # 流式接口：先吐进度事件，最后吐一个 result（或 error）
+    # ══════════════════════════════════════════════════════
+
+    async def chat_stream(self, user_input: str, conversation_id: int,
+                          user_id: int) -> AsyncIterator[dict]:
+        """异步生成器，产出的是「事件字典」，不是 SSE 文本。
+
+        SSE 的线上格式是传输层的事，归 router 拼——这一层不该知道自己
+        最终是走 SSE 还是走别的什么推送方式。
         """
-        # ── 第 1 步：确定会话 + 取历史（一个短事务，几毫秒）──
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async def on_event(code: StageCode, text: str) -> None:
+            await queue.put({"event": "stage", "code": code, "text": text})
+
+        async def runner() -> None:
+            try:
+                response = await self._run_round(user_input, conversation_id, user_id, on_event)
+                await queue.put({"event": "result", "data": response.model_dump()})
+            except Exception:
+                logger.exception("流式对话出错，会话 %s", conversation_id)
+                await queue.put({"event": "error", "text": STREAM_ERROR_TEXT})
+            finally:
+                await queue.put(_DONE)
+
+        task = asyncio.create_task(runner())
+        try:
+            while True:
+                item = await queue.get()
+                if item is _DONE:
+                    break
+                yield item
+        finally:
+            # 客户端中途断开（浏览器关页面）时，生成器会被 GeneratorExit 关掉，
+            # 这个 finally 就会跑到。此时必须把后台任务掐掉——
+            # 否则它会把整个 agent 循环跑完，继续烧模型调用的钱，
+            # 而且它跑完还会往一个没人读的队列里塞东西。
+            if not task.done():
+                logger.info("客户端断开，取消会话 %s 的后台任务", conversation_id)
+                task.cancel()
+
+    # ══════════════════════════════════════════════════════
+    # 一轮对话：普通接口和流式接口共用这一段
+    # ══════════════════════════════════════════════════════
+
+    async def _run_round(self, user_input: str, cid: int, user_id: int,
+                         on_event: StageEmitter | None) -> ChatResponse:
+        # ── 取历史（短事务）──
         async with self.session.begin():
-            cid = await self.conversation_service.open_or_get(conversation_id, user_id)
             history: list[BaseMessage] = await self.conversation_service.load_history(cid)
 
-        # ── 第 2 步：跑 agent ──
+        # ── 跑 agent ──
         # 故意放在事务外面。这一步会打模型、可能十几秒，
         # 把数据库连接攥在手里等外部 API 是浪费，也会拖长锁的持有时间。
-        result: AgentRunResult = await run_agent(user_input, history, self.session)
+        result: AgentRunResult = await run_agent(user_input, history, self.session, on_event)
 
         # ⚠️ 下面这个 if 是必须的，而且很不明显：
         # run_agent 里那些只读查询（查法条版本、扫名录、回表）会让 SQLAlchemy
@@ -52,7 +125,7 @@ class ChatService:
         if self.session.in_transaction():
             await self.session.commit()
 
-        # ── 第 3 步：把这一轮存回去（又一个短事务）──
+        # ── 存这一轮（又一个短事务）──
         # new_messages 里已经排除了系统提示词和历史，所以整份存进去不会重复。
         # payload 是「给人看的」那一份：AgentSchema 去掉 status（单独存一列）、
         # 去掉耗时和工具调用次数（运行时指标，历史里没人看）。
@@ -69,6 +142,10 @@ class ChatService:
 
         logger.info("会话 %s 这一轮存了 %s 条消息，status=%s", cid, saved, result.schema.status)
         return ChatResponse(conversation_id=cid, result=result.schema, disclaimer=disclaimer)
+
+    # ══════════════════════════════════════════════════════
+    # 历史
+    # ══════════════════════════════════════════════════════
 
     async def get_history(self, conversation_id: int, user_id: int) -> HistoryOut:
         """前端刷新页面后重画消息列表用。只读，所以一个事务包住就够了。"""

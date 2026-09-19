@@ -27,6 +27,7 @@ from models import AsyncSession
 from repository.law_repository import LawRepo
 from repository.milvus_repository import MilvusRepo
 from schemas.agent import AgentSchema, Candidate, ModelOutput
+from schemas.conversation import StageCode
 from service.embedding_service import EmbeddingService
 from service.law_service import LawService
 from service.risk_merge_service import RiskMergeService
@@ -41,6 +42,12 @@ MAX_ROUNDS = 6          # 保险丝，不是次数目标
 ANSWER_TOOL = "ModelOutput"
 DATA_ERROR_MSG = "系统的法条数据出了点问题，暂时给不出结果，请稍后再试"
 FAIL_MSG = "这次没能生成结果，请重试一次"
+# 三种失败必须说不同的话，因为处置完全不同：
+#   数据故障   -> 重试一万次也没用，得修数据（DATA_ERROR_MSG）
+#   格式不对   -> 重发一次很可能就好（SCHEMA_ERROR_MSG）
+#   未知异常   -> 重发可能好（FAIL_MSG）
+# 混成一句话，用户不知道该不该重试，我排查时也看不出走了哪条路。
+SCHEMA_ERROR_MSG = "模型这次给出的结果格式不对，请再发一次（重发通常就好了）"
 
 
 # ══════════════════════════════════════════════════════════════
@@ -53,10 +60,18 @@ FAIL_MSG = "这次没能生成结果，请重试一次"
 # ══════════════════════════════════════════════════════════════
 
 ROLE_AND_TASK = """你是一位品牌／产品命名顾问，同时熟悉《商标法》里关于注册和使用的禁区。
-你的工作是取名和合规检查：根据用户给的品类、调性、目标人群提出候选品牌名并说清思路；
+你的工作是取名和合规检查：根据用户给的品类提出候选品牌名并说清思路；
 或者评估用户自己提出的名字能不能作为商标注册和使用。
 
-信息不足时不许猜——不许自己替用户补品类、调性、目标人群，也不许替用户决定他想要什么风格。"""
+用户给的信息分两类，处理方式完全不同：
+
+必需信息＝「给什么起名」（品类／行业）。这个真的不知道时才能反问，而且要一次问完，不要挤牙膏。
+
+加分信息＝调性、目标人群、字数偏好。这些没说的时候【不许反问】：
+自己挑一个方向直接出名字，并在 meaning 里写明「我按某某方向来的」。
+这是披露，不是替用户编造需求——用户下一轮可以说「换个方向」，那时候再改。
+
+只要知道了品类，就必须给出名字。一个真人命名顾问不会问四个问题才肯开口。"""
 
 CLAUSE_RULES = """引用条款时只填每行开头【】里的数字，并且必须填最具体的那一项。
 原文以「：」结尾的那几行是引导语，它们只是后面各项的前提，本身不是可命中的条款，不要填它们。"""
@@ -111,13 +126,14 @@ def poetry_tool(meaning: Annotated[str, Field(...,
 # 循环
 # ══════════════════════════════════════════════════════════════
 
-async def _run_loop(bound, messages: list, tool_call_count: int):
+async def _run_loop(bound, messages: list, tool_call_count: int, emit):
     """跑到模型调 ModelOutput 交答案为止。
 
     返回 (model_output | None, tool_call_count)。None = 轮次耗尽，交给降级路径。
     """
     for round_no in range(1, MAX_ROUNDS + 1):
         logger.info("===== 第 %d 轮调用模型 =====", round_no)
+        await emit("thinking", f"正在思考…（第 {round_no} 轮）")
         ai_msg = await bound.ainvoke(messages)
         messages.append(ai_msg)                       # 铁律一：模型回复先 append
 
@@ -141,6 +157,7 @@ async def _run_loop(bound, messages: list, tool_call_count: int):
                     logger.warning("ModelOutput 校验失败：%s", feedback[:400])
             else:
                 try:
+                    await emit("retrieve_poetry", "正在检索诗词素材…")
                     result = await poetry_tool.ainvoke(tc["args"])
                     logger.info("poetry_tool 返回 %s 首", len(result))
                     feedback = json.dumps(result, ensure_ascii=False)
@@ -196,10 +213,10 @@ async def _force_answer(llm, messages: list):
     return answer
 
 
-async def _merge_all(model_output, version, trademark_service, merge_service) -> list[Candidate]:
+async def _merge_all(from_model, version, trademark_service, merge_service) -> list[Candidate]:
     """每个候选名：扫一遍名录，再把两侧理由按条款聚合。"""
     out = []
-    for c in model_output.candidates:
+    for c in from_model:
         hits = await trademark_service.scan_name(c.name, version)
         risks = await merge_service.merge_risks(c.name, hits, version, c.risks)
         out.append(Candidate(name=c.name, origin=c.origin, meaning=c.meaning,
@@ -212,6 +229,33 @@ def _drop_bad_risk(model_output, candidate_name: str, bad_id: int) -> None:
     for c in model_output.candidates:
         if c.name == candidate_name:
             c.risks = [r for r in c.risks if r.clause_id != bad_id]
+
+
+def _legal_candidates(intent, candidates):
+    """按 AgentSchema 的跨字段规则挑出合法的候选名，返回 (合法的, 丢掉几个)。
+
+    为什么要先过滤再拼 AgentSchema：
+      那个校验器是「一个坏苹果毁一筐」——五个候选名里只要一个 meaning 是空的，
+      整个 AgentSchema 就构造不出来，五个名字全丢，用户只看到一句「请重试」。
+      先过滤，就能只丢掉坏的那一个，其余照常给，status 标降级。
+      这跟模型编假条款 id 的处理是同一个模式。
+    """
+    kept, dropped = [], 0
+    for c in candidates:
+        if c.origin == "系统生成" and not c.meaning:
+            dropped += 1          # 取名必须说清为什么推荐它
+            continue
+        if c.origin == "用户提供" and c.meaning is not None:
+            dropped += 1          # 用户自己起的名字不该有「推荐理由」
+            continue
+        if intent == "取名" and c.origin != "系统生成":
+            dropped += 1
+            continue
+        if intent == "合规检查" and c.origin != "用户提供":
+            dropped += 1
+            continue
+        kept.append(c)
+    return kept, dropped
 
 
 # ══════════════════════════════════════════════════════════════
@@ -236,7 +280,8 @@ class AgentRunResult:
     new_messages: list
 
 
-async def run_agent(user_input: str, history: list, session: AsyncSession) -> AgentRunResult:
+async def run_agent(user_input: str, history: list, session: AsyncSession,
+                    on_event=None) -> AgentRunResult:
     """纯 agent：吃「历史消息 + 用户这句新话」，吐「结果 + 这一轮新增的消息」。
 
     它不知道会话表的存在——存不存、存哪张表、怎么还原，
@@ -244,6 +289,12 @@ async def run_agent(user_input: str, history: list, session: AsyncSession) -> Ag
     """
     started = time.monotonic()
     tool_call_count = 0
+
+    async def emit(code: StageCode, text: str) -> None:
+        # 把进度事件推给调用方。非流式调用时 on_event 是 None，这里就是空操作，
+        # 所以同一个 run_agent 既能被普通接口用、也能被 SSE 接口用。
+        if on_event is not None:
+            await on_event(code, text)
 
     # messages 的前 persisted_before 条是「系统提示词 + 历史」，它们不该被重复存。
     # 从这个下标切下去，才是这一轮新产生的。
@@ -275,6 +326,7 @@ async def run_agent(user_input: str, history: list, session: AsyncSession) -> Ag
     try:
         # 版本在这一层查一次，提示词／扫描／卡片三处共用同一个对象。
         # 跨午夜也不会出现「扫描按旧版判、卡片显示新版」。
+        await emit("load_law", "正在装配商标法条款…")
         version = await law_repo.get_law_version_by_date(date.today())
         clause_block = await law_service.build_clause_block(version)
     except TrademarkDataError:
@@ -290,7 +342,7 @@ async def run_agent(user_input: str, history: list, session: AsyncSession) -> Ag
     degraded = False
 
     try:
-        model_output, tool_call_count = await _run_loop(bound, messages, tool_call_count)
+        model_output, tool_call_count = await _run_loop(bound, messages, tool_call_count, emit)
         if model_output is None:
             logger.warning("达到最大轮次 %s，强制交答案（降级）", MAX_ROUNDS)
             model_output = await _force_answer(llm, messages)
@@ -319,18 +371,36 @@ async def run_agent(user_input: str, history: list, session: AsyncSession) -> Ag
     attempts = 0
     while True:
         try:
-            candidates = await _merge_all(model_output, version, trademark_service, merge_service)
+            kept, dropped = _legal_candidates(model_output.intent, model_output.candidates)
+            intent = model_output.intent
+            if dropped:
+                degraded = True
+                logger.warning("丢掉 %s 个不合法的候选名（intent=%s，原本 %s 个），其余照常返回，status 标降级",
+                               dropped, intent, len(model_output.candidates))
+            # 「两者都有」要求两种 origin 至少各一个。过滤完只剩一种时，
+            # intent 必须跟着改，否则校验器照样拒——而且改完更贴近实际返回了什么。
+            if intent == "两者都有" and len({c.origin for c in kept}) == 1:
+                intent = "取名" if kept[0].origin == "系统生成" else "合规检查"
+                logger.warning("过滤后只剩一种 origin，intent 由『两者都有』改为『%s』", intent)
+            if not kept:
+                logger.error("过滤之后一个候选名都不剩（intent=%s，原本 %s 个）",
+                             model_output.intent, len(model_output.candidates))
+                return _fail(SCHEMA_ERROR_MSG)
+
+            await emit("scan_trademark", "正在核对禁用字样名录…")
+            candidates = await _merge_all(kept, version, trademark_service, merge_service)
             break
         except ClauseIdHallucinatedError as e:
             attempts += 1
             if attempts == 1:
+                await emit("retry", "刚才引用的条款编号有误，正在重新判断…")
                 logger.warning("模型引用了不存在的条款 id=%s（候选名『%s』），喂回错误重判一次",
                                e.bad_clause_id, e.candidate_name)
                 messages.append(HumanMessage(
                     f"你刚才给『{e.candidate_name}』引用的条款编号 {e.bad_clause_id} 不存在。"
                     f"当前版本可用的编号是：{e.valid_ids}。请重新提交完整答案。"))
                 try:
-                    model_output, tool_call_count = await _run_loop(bound, messages, tool_call_count)
+                    model_output, tool_call_count = await _run_loop(bound, messages, tool_call_count, emit)
                 except Exception:
                     logger.exception("重判时出现异常")
                     return _fail(FAIL_MSG)
@@ -350,13 +420,13 @@ async def run_agent(user_input: str, history: list, session: AsyncSession) -> Ag
 
     try:
         return _finish(AgentSchema(status="降级" if degraded else "正常",
-                                   intent=model_output.intent, candidates=candidates,
+                                   intent=intent, candidates=candidates,
                                    user_message=None,
                                    duration_seconds=time.monotonic() - started,
                                    tool_call_count=tool_call_count))
     except ValidationError:
         logger.exception("拼不出合法的 AgentSchema（模型给的 intent／origin／meaning 组合不合法）")
-        return _fail(FAIL_MSG)
+        return _fail(SCHEMA_ERROR_MSG)
 
 
 if __name__ == "__main__":
